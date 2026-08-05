@@ -24,3 +24,6 @@ async def save_file(file: UploadFile, filename: str) -> None:
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+
+def get_file_path(filename: str) -> str:
+    return os.path.join(UPLOAD_FOLDER, filename)
