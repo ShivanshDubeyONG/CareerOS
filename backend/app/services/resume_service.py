@@ -1,83 +1,181 @@
+import os
+import uuid
+
+import fitz
 from fastapi import HTTPException, UploadFile
 
-from app.extractors.resume_extractor import resume_extractor
-from app.parsers.resume_parser import resume_parser
-from app.repositories.resume_repository import resume_repository
 from app.schemas.resume_schema import (
     ResumeAnalysisResponse,
     ResumeUploadResponse,
 )
-from app.utils.file_utils import (
-    generate_unique_filename,
-    get_file_path,
-    is_allowed_file,
-    save_file,
-)
+from app.services.resume_extraction_service import resume_extraction_service
 
 
 class ResumeService:
 
-    async def upload_resume(self, file: UploadFile) -> ResumeUploadResponse:
+    def __init__(self):
+        self.upload_dir = "uploads"
+        os.makedirs(self.upload_dir, exist_ok=True)
 
-        if not is_allowed_file(file.filename):
+    async def upload_resume(
+        self,
+        file: UploadFile,
+    ) -> ResumeUploadResponse:
+
+        if not file.filename:
+            raise HTTPException(
+                status_code=400,
+                detail="No file provided.",
+            )
+
+        extension = os.path.splitext(file.filename)[1].lower()
+
+        if extension not in [".pdf", ".docx"]:
             raise HTTPException(
                 status_code=400,
                 detail="Only PDF and DOCX files are allowed.",
             )
 
-        unique_filename = generate_unique_filename(file.filename)
+        file_id = str(uuid.uuid4())
+        filename = f"{file_id}{extension}"
 
-        await save_file(file, unique_filename)
-
-        resume_id = unique_filename.split(".")[0]
-
-        resume_repository.save(
-            resume_id=resume_id,
-            filename=unique_filename,
-            original_filename=file.filename,
+        file_path = os.path.join(
+            self.upload_dir,
+            filename,
         )
+
+        contents = await file.read()
+
+        with open(file_path, "wb") as f:
+            f.write(contents)
 
         return ResumeUploadResponse(
             message="Resume uploaded successfully",
-            file_id=resume_id,
-            filename=unique_filename,
+            file_id=file_id,
+            filename=filename,
             original_filename=file.filename,
         )
 
     def get_resume(self, resume_id: str):
 
-        resume = resume_repository.get(resume_id)
+        filename = resume_id
 
-        if resume is None:
+        if not filename.endswith((".pdf", ".docx")):
+            pdf_path = os.path.join(
+                self.upload_dir,
+                f"{resume_id}.pdf",
+            )
+
+            docx_path = os.path.join(
+                self.upload_dir,
+                f"{resume_id}.docx",
+            )
+
+            if os.path.exists(pdf_path):
+                filename = f"{resume_id}.pdf"
+
+            elif os.path.exists(docx_path):
+                filename = f"{resume_id}.docx"
+
+            else:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Resume not found.",
+                )
+
+        file_path = os.path.join(
+            self.upload_dir,
+            filename,
+        )
+
+        if not os.path.exists(file_path):
             raise HTTPException(
                 status_code=404,
                 detail="Resume not found.",
             )
 
-        return resume
+        extension = os.path.splitext(filename)[1].lower()
 
-    def analyze_resume(self, resume_id: str) -> ResumeAnalysisResponse:
+        if extension == ".pdf":
 
-        resume = resume_repository.get(resume_id)
+            doc = fitz.open(file_path)
 
-        if resume is None:
+            text = ""
+
+            for page in doc:
+                text += page.get_text()
+
+            doc.close()
+
+        else:
+            from docx import Document
+
+            document = Document(file_path)
+
+            text = "\n".join(
+                paragraph.text
+                for paragraph in document.paragraphs
+                if paragraph.text.strip()
+            )
+
+        return {
+            "file_id": resume_id.replace(".pdf", "").replace(".docx", ""),
+            "filename": filename,
+            "text": text,
+        }
+
+    def analyze_resume(
+        self,
+        resume_id: str,
+    ) -> ResumeAnalysisResponse:
+
+        filename = resume_id
+
+        if not filename.endswith((".pdf", ".docx")):
+
+            pdf_path = os.path.join(
+                self.upload_dir,
+                f"{resume_id}.pdf",
+            )
+
+            docx_path = os.path.join(
+                self.upload_dir,
+                f"{resume_id}.docx",
+            )
+
+            if os.path.exists(pdf_path):
+                filename = f"{resume_id}.pdf"
+
+            elif os.path.exists(docx_path):
+                filename = f"{resume_id}.docx"
+
+            else:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Resume not found.",
+                )
+
+        file_path = os.path.join(
+            self.upload_dir,
+            filename,
+        )
+
+        if not os.path.exists(file_path):
             raise HTTPException(
                 status_code=404,
                 detail="Resume not found.",
             )
 
-        filename = resume["filename"]
+        extracted_resume = resume_extraction_service.extract(
+            file_path
+        )
 
-        file_path = get_file_path(filename)
-
-        extracted_text = resume_parser.extract_text(file_path)
-
-        resume_data = resume_extractor.extract(extracted_text)
+        resume = self.get_resume(resume_id)
 
         return ResumeAnalysisResponse(
-            file_id=resume_id,
-            text=extracted_text,
-            resume=resume_data,
+            file_id=resume_id.replace(".pdf", "").replace(".docx", ""),
+            text=resume["text"],
+            resume=extracted_resume,
         )
 
 

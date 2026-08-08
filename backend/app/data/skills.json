@@ -1,0 +1,48 @@
+[
+    "Python",
+    "Java",
+    "C++",
+    "C",
+    "JavaScript",
+    "TypeScript",
+    "HTML",
+    "CSS",
+
+    "FastAPI",
+    "Flask",
+    "Django",
+    "React",
+    "Next.js",
+    "Node.js",
+    "Express",
+
+    "TensorFlow",
+    "PyTorch",
+    "Scikit-learn",
+    "NumPy",
+    "Pandas",
+    "OpenCV",
+
+    "Machine Learning",
+    "Deep Learning",
+    "Computer Vision",
+    "NLP",
+    "LLM",
+
+    "Git",
+    "GitHub",
+    "Docker",
+    "Kubernetes",
+
+    "SQL",
+    "MySQL",
+    "PostgreSQL",
+    "MongoDB",
+
+    "AWS",
+    "Azure",
+    "GCP",
+
+    "Linux",
+    "REST API"
+]

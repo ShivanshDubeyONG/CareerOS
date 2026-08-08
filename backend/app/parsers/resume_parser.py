@@ -1,27 +1,66 @@
+import os
 import fitz
-from fastapi import HTTPException
+from docx import Document
 
 
 class ResumeParser:
-    @staticmethod
-    def extract_text(file_path: str) -> str:
-        try:
-            document = fitz.open(file_path)
+
+    def extract_text(self, file_path: str) -> str:
+
+        extension = os.path.splitext(file_path)[1].lower()
+
+        if extension == ".pdf":
+
+            doc = fitz.open(file_path)
 
             text = ""
 
-            for page in document:
+            for page in doc:
                 text += page.get_text()
 
-            document.close()
+            doc.close()
 
-            return text.strip()
+            return text
 
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to parse resume: {str(e)}"
-            )
+        elif extension == ".docx":
+
+            document = Document(file_path)
+
+            text = ""
+
+            for paragraph in document.paragraphs:
+                text += paragraph.text + "\n"
+
+            return text
+
+        else:
+            raise ValueError("Unsupported file type.")
+
+    def extract_links(self, file_path: str):
+
+        extension = os.path.splitext(file_path)[1].lower()
+
+        if extension != ".pdf":
+            return []
+
+        doc = fitz.open(file_path)
+
+        links = []
+
+        for page in doc:
+
+            page_links = page.get_links()
+
+            for link in page_links:
+
+                uri = link.get("uri")
+
+                if uri:
+                    links.append(uri)
+
+        doc.close()
+
+        return list(dict.fromkeys(links))
 
 
 resume_parser = ResumeParser()
