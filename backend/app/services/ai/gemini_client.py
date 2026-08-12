@@ -6,12 +6,17 @@ from pydantic import BaseModel
 
 
 class GeminiClient:
+
     def __init__(self):
-        api_key = os.getenv("GEMINI_API_KEY")
+
+        api_key = os.getenv(
+            "GEMINI_API_KEY"
+        )
 
         if not api_key:
             raise ValueError(
-                "GEMINI_API_KEY environment variable is not set."
+                "GEMINI_API_KEY environment variable "
+                "is not set."
             )
 
         self.client = genai.Client(
@@ -24,13 +29,15 @@ class GeminiClient:
         response_schema: type[BaseModel],
     ) -> BaseModel:
 
-        response = self.client.models.generate_content(
-            model="gemini-3.6-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=response_schema,
-            ),
+        response = (
+            self.client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=response_schema,
+                ),
+            )
         )
 
         if response.parsed is not None:

@@ -1,349 +1,192 @@
-import json
 import re
-from typing import Dict, List
-
-from app.schemas.github_schema import (
-    GitHubProfile,
-    GitHubRepository,
-)
 
 
 class GitHubAnalyzer:
 
-    def analyze_repository(
-        self,
-        repository: GitHubRepository,
-    ) -> Dict:
-        language_count = len(repository.languages)
-
-        readme_length = (
-            len(repository.readme.strip())
-            if repository.readme
-            else 0
-        )
-
-        has_readme = repository.readme is not None
-
-        activity_score = self._calculate_activity_score(
-            repository
-        )
-
-        documentation_score = (
-            self._calculate_documentation_score(
-                repository
-            )
-        )
-
-        project_strength_score = (
-            self._calculate_project_strength(
-                repository,
-                documentation_score,
-                activity_score,
-            )
-        )
-
-        return {
-            "name": repository.name,
-            "url": repository.url,
-            "description": repository.description,
-
-            "primary_language": repository.language,
-            "languages": repository.languages,
-            "language_count": language_count,
-
-            "stars": repository.stars,
-            "forks": repository.forks,
-            "topics": repository.topics,
-
-            "is_fork": repository.is_fork,
-            "is_archived": repository.is_archived,
-
-            "has_readme": has_readme,
-            "readme_length": readme_length,
-
-            "dependencies": repository.dependencies,
-            "dependency_files": repository.dependency_files,
-
-            "activity_score": activity_score,
-            "documentation_score": documentation_score,
-            "project_strength_score": project_strength_score,
-        }
-
-    def analyze_profile(
-        self,
-        profile: GitHubProfile,
-    ) -> Dict:
-        repository_analysis: List[Dict] = []
-
-        for repository in profile.repositories:
-            analysis = self.analyze_repository(
-                repository
-            )
-
-            repository_analysis.append(analysis)
-
-        original_repositories = [
-            repo
-            for repo in profile.repositories
-            if not repo.is_fork
-        ]
-
-        active_repositories = [
-            repo
-            for repo in profile.repositories
-            if not repo.is_archived
-        ]
-
-        total_stars = sum(
-            repo.stars
-            for repo in profile.repositories
-        )
-
-        total_forks = sum(
-            repo.forks
-            for repo in profile.repositories
-        )
-
-        languages = self._collect_languages(
-            profile.repositories
-        )
-
-        dependencies = self._collect_dependencies(
-            profile.repositories
-        )
-
-        return {
-            "username": profile.username,
-            "name": profile.name,
-            "bio": profile.bio,
-            "profile_url": profile.profile_url,
-
-            "public_repository_count": (
-                profile.public_repository_count
-            ),
-            "followers": profile.followers,
-            "following": profile.following,
-
-            "total_repositories_analyzed": len(
-                profile.repositories
-            ),
-
-            "original_repository_count": len(
-                original_repositories
-            ),
-
-            "active_repository_count": len(
-                active_repositories
-            ),
-
-            "total_stars": total_stars,
-            "total_forks": total_forks,
-
-            "languages_used": languages,
-
-            "dependencies_used": dependencies,
-
-            "repositories": repository_analysis,
-        }
-
     @staticmethod
     def extract_dependencies(
-        files: Dict[str, str],
-    ) -> List[str]:
+        dependency_files: dict[str, str],
+    ) -> list[str]:
+
         dependencies = set()
 
-        # ------------------------------------------
-        # requirements.txt
-        # ------------------------------------------
+        for filename, content in dependency_files.items():
 
-        requirements = files.get("requirements.txt")
+            if not content:
+                continue
 
-        if requirements:
-            for line in requirements.splitlines():
-                line = line.strip()
+            # requirements.txt
+            if filename == "requirements.txt":
 
-                if (
-                    not line
-                    or line.startswith("#")
-                    or line.startswith("-")
-                ):
-                    continue
+                for line in content.splitlines():
 
-                match = re.match(
-                    r"^([A-Za-z0-9_.-]+)",
-                    line,
-                )
+                    line = line.strip()
 
-                if match:
-                    dependencies.add(
-                        match.group(1).lower()
-                    )
+                    if (
+                        not line
+                        or line.startswith("#")
+                    ):
+                        continue
 
-        # ------------------------------------------
-        # package.json
-        # ------------------------------------------
-
-        package_json = files.get("package.json")
-
-        if package_json:
-            try:
-                data = json.loads(package_json)
-
-                for section in [
-                    "dependencies",
-                    "devDependencies",
-                ]:
-                    section_data = data.get(
-                        section,
-                        {},
-                    )
-
-                    for dependency in section_data:
-                        dependencies.add(
-                            dependency.lower()
-                        )
-
-            except json.JSONDecodeError:
-                pass
-
-        # ------------------------------------------
-        # pyproject.toml
-        # ------------------------------------------
-
-        pyproject = files.get("pyproject.toml")
-
-        if pyproject:
-            dependency_section = False
-
-            for line in pyproject.splitlines():
-                stripped = line.strip()
-
-                if stripped.startswith("["):
-                    dependency_section = (
-                        "dependencies"
-                        in stripped.lower()
-                    )
-
-                if dependency_section:
                     match = re.match(
-                        r'^["\']?([A-Za-z0-9_.-]+)',
-                        stripped,
+                        r"^([A-Za-z0-9_.-]+)",
+                        line,
                     )
 
                     if match:
-                        dependency = match.group(1)
+                        dependencies.add(
+                            match.group(1)
+                        )
 
-                        if dependency.lower() not in {
-                            "dependencies",
-                            "optional",
-                        }:
+            # package.json
+            elif filename == "package.json":
+
+                try:
+                    import json
+
+                    data = json.loads(content)
+
+                    for section in [
+                        "dependencies",
+                        "devDependencies",
+                    ]:
+
+                        for dependency in data.get(
+                            section,
+                            {},
+                        ).keys():
+
                             dependencies.add(
-                                dependency.lower()
+                                dependency
                             )
 
-        return sorted(dependencies)
+                except Exception:
+                    continue
 
-    @staticmethod
-    def _calculate_activity_score(
-        repository: GitHubRepository,
-    ) -> int:
-        if repository.is_archived:
-            return 10
+            # pyproject.toml
+            elif filename == "pyproject.toml":
 
-        if not repository.updated_at:
-            return 30
+                # Lightweight extraction of common
+                # dependency declarations.
+                matches = re.findall(
+                    r"""["']([A-Za-z0-9_.-]+)(?:[<>=!~^].*)?["']""",
+                    content,
+                )
 
-        return 70
+                for dependency in matches:
+                    dependencies.add(
+                        dependency
+                    )
 
-    @staticmethod
-    def _calculate_documentation_score(
-        repository: GitHubRepository,
-    ) -> int:
-        if not repository.readme:
-            return 0
-
-        readme_length = len(
-            repository.readme.strip()
+        return sorted(
+            dependencies
         )
 
-        if readme_length >= 2000:
-            return 100
-
-        if readme_length >= 1000:
-            return 80
-
-        if readme_length >= 500:
-            return 60
-
-        if readme_length >= 200:
-            return 40
-
-        return 20
-
     @staticmethod
-    def _calculate_project_strength(
-        repository: GitHubRepository,
-        documentation_score: int,
-        activity_score: int,
-    ) -> int:
-        score = 0
+    def analyze_repository_structure(
+        file_paths: list[str],
+    ) -> dict:
 
-        if repository.description:
-            score += 15
+        source_directories = set()
+        test_files = []
+        config_files = []
 
-        if repository.language:
-            score += 15
+        has_docker = False
+        has_frontend = False
 
-        if repository.languages:
-            score += 15
+        for path in file_paths:
 
-        if repository.topics:
-            score += 10
+            normalized = path.lower()
+            parts = path.split("/")
 
-        if repository.dependencies:
-            score += 10
+            # Detect meaningful source directories
+            if len(parts) > 1:
 
-        if not repository.is_fork:
-            score += 15
+                first_directory = parts[0]
 
-        if not repository.is_archived:
-            score += 10
+                if first_directory in {
+                    "app",
+                    "src",
+                    "lib",
+                    "backend",
+                    "frontend",
+                    "server",
+                    "client",
+                    "components",
+                    "services",
+                    "api",
+                }:
 
-        score += int(
-            documentation_score * 0.10
-        )
+                    source_directories.add(
+                        first_directory
+                    )
 
-        score += int(
-            activity_score * 0.10
-        )
+            # Detect tests
+            if (
+                "test" in normalized
+                or normalized.startswith(
+                    "tests/"
+                )
+            ):
 
-        score += min(
-            repository.stars,
-            10,
-        )
+                test_files.append(
+                    path
+                )
 
-        return min(score, 100)
+            # Detect configuration files
+            if normalized.endswith(
+                (
+                    ".env",
+                    ".ini",
+                    ".toml",
+                    ".yaml",
+                    ".yml",
+                    ".json",
+                    ".cfg",
+                )
+            ):
 
-    @staticmethod
-    def _collect_languages(
-        repositories: List[GitHubRepository],
-    ) -> List[str]:
-        languages = set()
+                config_files.append(
+                    path
+                )
 
-        for repository in repositories:
-            for language in repository.languages:
-                languages.add(language)
+            filename = parts[-1].lower()
 
-        return sorted(languages)
+            # Docker
+            if filename in {
+                "dockerfile",
+                "docker-compose.yml",
+                "docker-compose.yaml",
+            }:
 
-    @staticmethod
-    def _collect_dependencies(
-        repositories: List[GitHubRepository],
-    ) -> List[str]:
-        dependencies = set()
+                has_docker = True
 
-        for repository in repositories:
-            for dependency in repository.dependencies:
-                dependencies.add(dependency)
+            # Frontend
+            if (
+                normalized.startswith(
+                    "frontend/"
+                )
+                or normalized.startswith(
+                    "client/"
+                )
+                or filename in {
+                    "package.json",
+                    "vite.config.js",
+                    "vite.config.ts",
+                }
+            ):
 
-        return sorted(dependencies)
+                has_frontend = True
+
+        return {
+            "source_directories": sorted(
+                source_directories
+            ),
+            "test_files": test_files,
+            "config_files": config_files,
+            "has_docker": has_docker,
+            "has_frontend": has_frontend,
+            "has_tests": bool(
+                test_files
+            ),
+        }

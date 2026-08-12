@@ -4,72 +4,49 @@ from pydantic import BaseModel, Field
 
 
 class SkillEvidence(BaseModel):
-    skill: str = Field(
-        description="Technical skill demonstrated by the candidate."
-    )
+    skill: str
 
-    confidence: str = Field(
-        description="Confidence level: high, medium, or low."
-    )
+    confidence: str
 
-    evidence: str = Field(
-        description="Specific GitHub evidence supporting the skill."
-    )
+    evidence: str
 
 
 class ProjectInsight(BaseModel):
-    repository: str = Field(
-        description="Repository name."
+    repository: str
+
+    meaningful_project: bool
+
+    project_score: float = Field(
+        ge=0,
+        le=10,
     )
 
-    project_type: str = Field(
-        description="Likely project type, such as ML, backend, frontend, data science, CLI, or library."
-    )
+    project_stage: str
 
-    technologies: List[str] = Field(
-        description="Technologies clearly demonstrated by the repository."
-    )
+    project_type: str
 
-    assessment: str = Field(
-        description="Concise assessment of the technical substance and quality of the project."
-    )
+    technologies: List[str]
+
+    assessment: str
 
 
 class EvidenceGap(BaseModel):
-    area: str = Field(
-        description="Skill, engineering practice, or technology with weak evidence."
-    )
+    area: str
 
-    reason: str = Field(
-        description="Why the GitHub evidence is weak or insufficient."
-    )
+    reason: str
 
 
 class GitHubAIAnalysis(BaseModel):
-    overall_assessment: str = Field(
-        description="High-level assessment of the candidate's GitHub profile."
-    )
+    projects: List[ProjectInsight]
 
-    technical_strengths: List[str] = Field(
-        description="The candidate's strongest technical areas demonstrated on GitHub."
-    )
+    technical_strengths: List[str]
 
-    demonstrated_skills: List[SkillEvidence] = Field(
-        description="Skills supported by concrete GitHub evidence."
-    )
+    demonstrated_skills: List[SkillEvidence]
 
-    strongest_projects: List[ProjectInsight] = Field(
-        description="The strongest repositories from a career/engineering perspective."
-    )
+    evidence_gaps: List[EvidenceGap]
 
-    evidence_gaps: List[EvidenceGap] = Field(
-        description="Important areas where GitHub provides weak or insufficient evidence."
-    )
+    overall_assessment: str
 
-    career_relevance: str = Field(
-        description="How useful the current GitHub portfolio appears for software/ML engineering careers."
-    )
+    career_relevance: str
 
-    recommendations: List[str] = Field(
-        description="Specific, actionable recommendations for improving the GitHub portfolio."
-    )
+    recommendations: List[str]

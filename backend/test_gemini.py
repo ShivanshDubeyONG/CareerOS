@@ -1,35 +1,37 @@
-from app.integrations.github.github_analyzer import GitHubAnalyzer
-from app.integrations.github.github_client import GitHubClient
+from app.integrations.github.github_analyzer import (
+    GitHubAnalyzer,
+)
+from app.integrations.github.github_client import (
+    GitHubClient,
+)
 from app.schemas.github_schema import (
     GitHubProfile,
     GitHubRepository,
 )
-from app.services.ai.github_ai_analyzer import GitHubAIAnalyzer
+from app.services.ai.github_ai_analyzer import (
+    GitHubAIAnalyzer,
+)
 
 
-USERNAME = "ShivanshDubeyONG"
-
-
+USERNAME = "synshami"
 client = GitHubClient()
+
 github_analyzer = GitHubAnalyzer()
+
 ai_analyzer = GitHubAIAnalyzer()
 
 
 print("\n========================================")
-print("       CAREEROS GITHUB AI ANALYSIS")
+print("       CAREEROS GITHUB INTELLIGENCE")
 print("========================================")
 
 
-print("\nFetching GitHub profile...")
-
-profile_data = client.get_user(USERNAME)
-
-repositories_data = client.get_repositories(
+profile_data = client.get_user(
     USERNAME
 )
 
-print(
-    f"Found {len(repositories_data)} repositories."
+repositories_data = client.get_repositories(
+    USERNAME
 )
 
 
@@ -39,33 +41,46 @@ repositories = []
 for repo in repositories_data:
 
     owner = repo["owner"]["login"]
+
     repo_name = repo["name"]
+
+    default_branch = repo.get(
+        "default_branch",
+        "main",
+    )
 
     print(
         f"Processing: {repo_name}"
     )
 
     try:
+
         languages = (
             client.get_repository_languages(
                 owner,
                 repo_name,
             )
         )
+
     except Exception:
+
         languages = {}
 
     try:
+
         readme = (
             client.get_repository_readme(
                 owner,
                 repo_name,
             )
         )
+
     except Exception:
+
         readme = None
 
     dependency_files = {}
+
     dependency_file_names = []
 
     for filename in [
@@ -75,13 +90,17 @@ for repo in repositories_data:
     ]:
 
         try:
-            content = client.get_repository_file(
-                owner,
-                repo_name,
-                filename,
+
+            content = (
+                client.get_repository_file(
+                    owner,
+                    repo_name,
+                    filename,
+                )
             )
 
             if content:
+
                 dependency_files[
                     filename
                 ] = content
@@ -91,6 +110,7 @@ for repo in repositories_data:
                 )
 
         except Exception:
+
             pass
 
     dependencies = (
@@ -99,13 +119,127 @@ for repo in repositories_data:
         )
     )
 
+    # ------------------------------------
+    # Repository structure
+    # ------------------------------------
+
+    try:
+
+        file_paths = (
+            client.get_repository_tree(
+                owner,
+                repo_name,
+                default_branch,
+            )
+        )
+
+    except Exception:
+
+        file_paths = []
+
+    structure = (
+        github_analyzer.analyze_repository_structure(
+            file_paths
+        )
+    )
+
+    # ------------------------------------
+    # Fork ownership analysis
+    # ------------------------------------
+
+    fork_parent = None
+
+    fork_unique_commits = 0
+
+    fork_changed_files = 0
+
+    fork_additions = 0
+
+    fork_deletions = 0
+
+    fork_contribution_available = False
+
+    if repo.get("fork"):
+
+        parent = repo.get(
+            "parent"
+        )
+
+        if parent:
+
+            fork_parent = parent.get(
+                "full_name"
+            )
+
+            parent_branch = (
+                parent.get(
+                    "default_branch",
+                    "main",
+                )
+            )
+
+            try:
+
+                comparison = (
+                    client.compare_fork_to_parent(
+                        fork_owner=owner,
+                        fork_repo=repo_name,
+                        fork_branch=default_branch,
+                        parent_full_name=fork_parent,
+                        parent_branch=parent_branch,
+                    )
+                )
+
+                fork_contribution_available = (
+                    comparison["available"]
+                )
+
+                fork_unique_commits = (
+                    comparison[
+                        "unique_commits"
+                    ]
+                )
+
+                fork_changed_files = (
+                    comparison[
+                        "changed_files"
+                    ]
+                )
+
+                fork_additions = (
+                    comparison[
+                        "additions"
+                    ]
+                )
+
+                fork_deletions = (
+                    comparison[
+                        "deletions"
+                    ]
+                )
+
+            except Exception as error:
+
+                print(
+                    f"Fork comparison failed for "
+                    f"{repo_name}: {error}"
+                )
+
     repository = GitHubRepository(
+
         name=repo["name"],
-        full_name=repo["full_name"],
+
+        full_name=repo[
+            "full_name"
+        ],
+
         description=repo.get(
             "description"
         ),
-        url=repo["html_url"],
+
+        url=repo[
+            "html_url"
+        ],
 
         language=repo.get(
             "language"
@@ -138,9 +272,7 @@ for repo in repositories_data:
             False,
         ),
 
-        default_branch=repo.get(
-            "default_branch"
-        ),
+        default_branch=default_branch,
 
         created_at=repo.get(
             "created_at"
@@ -154,7 +286,69 @@ for repo in repositories_data:
 
         dependencies=dependencies,
 
-        dependency_files=dependency_file_names,
+        dependency_files=(
+            dependency_file_names
+        ),
+
+        file_paths=file_paths,
+
+        source_directories=(
+            structure[
+                "source_directories"
+            ]
+        ),
+
+        test_files=(
+            structure[
+                "test_files"
+            ]
+        ),
+
+        config_files=(
+            structure[
+                "config_files"
+            ]
+        ),
+
+        has_docker=(
+            structure[
+                "has_docker"
+            ]
+        ),
+
+        has_frontend=(
+            structure[
+                "has_frontend"
+            ]
+        ),
+
+        has_tests=(
+            structure[
+                "has_tests"
+            ]
+        ),
+
+        fork_parent=fork_parent,
+
+        fork_unique_commits=(
+            fork_unique_commits
+        ),
+
+        fork_changed_files=(
+            fork_changed_files
+        ),
+
+        fork_additions=(
+            fork_additions
+        ),
+
+        fork_deletions=(
+            fork_deletions
+        ),
+
+        fork_contribution_available=(
+            fork_contribution_available
+        ),
     )
 
     repositories.append(
@@ -163,7 +357,10 @@ for repo in repositories_data:
 
 
 github_profile = GitHubProfile(
-    username=profile_data["login"],
+
+    username=profile_data[
+        "login"
+    ],
 
     name=profile_data.get(
         "name"
@@ -177,9 +374,11 @@ github_profile = GitHubProfile(
         "html_url"
     ],
 
-    public_repository_count=profile_data.get(
-        "public_repos",
-        0,
+    public_repository_count=(
+        profile_data.get(
+            "public_repos",
+            0,
+        )
     ),
 
     followers=profile_data.get(
@@ -196,7 +395,11 @@ github_profile = GitHubProfile(
 )
 
 
-print("\nSending actual GitHub evidence to Gemini...")
+print(
+    "\nSending actual GitHub evidence "
+    "to Gemini..."
+)
+
 
 analysis = ai_analyzer.analyze(
     github_profile
@@ -204,87 +407,199 @@ analysis = ai_analyzer.analyze(
 
 
 print("\n========================================")
-print("          CAREEROS AI RESULT")
+print("          PROJECT ANALYSIS")
 print("========================================")
 
 
-print("\nOVERALL ASSESSMENT")
-print(analysis.overall_assessment)
-
-
-print("\nTECHNICAL STRENGTHS")
-
-for strength in analysis.technical_strengths:
-    print(f"- {strength}")
-
-
-print("\nDEMONSTRATED SKILLS")
-
-for skill in analysis.demonstrated_skills:
+for project in analysis.projects:
 
     print(
-        f"- {skill.skill} "
-        f"[{skill.confidence}]"
+        f"\n{project.repository}"
     )
 
     print(
-        f"  Evidence: {skill.evidence}"
-    )
-
-
-print("\nSTRONGEST PROJECTS")
-
-for project in analysis.strongest_projects:
-
-    print(
-        f"\n- {project.repository}"
+        "Meaningful:",
+        project.meaningful_project,
     )
 
     print(
-        f"  Type: {project.project_type}"
+        "Project score:",
+        f"{project.project_score}/10",
     )
 
     print(
-        "  Technologies:",
+        "Stage:",
+        project.project_stage,
+    )
+
+    print(
+        "Type:",
+        project.project_type,
+    )
+
+    print(
+        "Technologies:",
         ", ".join(
             project.technologies
         ),
     )
 
     print(
-        f"  Assessment: "
-        f"{project.assessment}"
+        "Assessment:",
+        project.assessment,
     )
 
 
-print("\nEVIDENCE GAPS")
+print(
+    "\nCalculating portfolio score..."
+)
 
-for gap in analysis.evidence_gaps:
+
+score = ai_analyzer.score(
+    github_profile,
+    analysis,
+)
+
+
+print("\n========================================")
+print("       GITHUB PORTFOLIO SCORE")
+print("========================================")
+
+
+print(
+    f"\nOVERALL: "
+    f"{score.overall_score}/100"
+)
+
+
+print(
+    f"\nMeaningful projects: "
+    f"{score.meaningful_project_count}"
+)
+
+
+dimensions = [
+
+    (
+        "Project Quality",
+        score.project_quality,
+    ),
+
+    (
+        "Portfolio Depth",
+        score.portfolio_depth,
+    ),
+
+    (
+        "Technical Breadth",
+        score.technical_breadth,
+    ),
+
+    (
+        "Activity & Consistency",
+        score.activity_consistency,
+    ),
+
+    (
+        "Documentation",
+        score.documentation,
+    ),
+
+    (
+        "Originality & Ownership",
+        score.originality_ownership,
+    ),
+]
+
+
+for name, dimension in dimensions:
 
     print(
-        f"- {gap.area}"
+        f"\n{name}: "
+        f"{dimension.score}/100"
     )
 
     print(
-        f"  Reason: {gap.reason}"
+        dimension.rationale
     )
 
 
-print("\nCAREER RELEVANCE")
-print(analysis.career_relevance)
+print(
+    "\nStrongest area:",
+    score.strongest_area,
+)
 
 
-print("\nRECOMMENDATIONS")
+print(
+    "Biggest weakness:",
+    score.biggest_weakness,
+)
 
-for recommendation in analysis.recommendations:
+
+print(
+    "\nRecommendations:"
+)
+
+
+for recommendation in (
+    score.recommendations
+):
+
     print(
         f"- {recommendation}"
     )
+
+
+print(
+    "\n========================================"
+)
+
+print(
+    "          FORK EVIDENCE"
+)
+
+print(
+    "========================================"
+)
+
+
+for repository in repositories:
+
+    if repository.is_fork:
+
+        print(
+            f"\n{repository.name}"
+        )
+
+        print(
+            "Parent:",
+            repository.fork_parent,
+        )
+
+        print(
+            "Unique commits:",
+            repository.fork_unique_commits,
+        )
+
+        print(
+            "Changed files:",
+            repository.fork_changed_files,
+        )
+
+        print(
+            "Lines added:",
+            repository.fork_additions,
+        )
+
+        print(
+            "Lines deleted:",
+            repository.fork_deletions,
+        )
 
 
 client.close()
 
 
 print("\n========================================")
-print("       GITHUB AI ANALYSIS COMPLETE")
+print("       CAREEROS ANALYSIS COMPLETE")
 print("========================================")
