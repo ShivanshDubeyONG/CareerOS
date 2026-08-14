@@ -1,3 +1,4 @@
+import re
 import base64
 import os
 from typing import Optional
@@ -286,6 +287,84 @@ class GitHubClient:
 
         return data
 
+    def get_total_commit_count(
+        self,
+        owner: str,
+        repo: str,
+    ) -> int:
+
+        """
+        Get the repository's total commit count.
+
+        GitHub's commit_activity endpoint only provides
+        weekly activity for approximately the last year and
+        may temporarily return HTTP 202 while statistics are
+        being generated.
+
+        The commits endpoint exposes pagination metadata.
+        Requesting one commit per page allows us to determine
+        the final page number without downloading the entire
+        commit history.
+        """
+
+        response = self.client.get(
+            f"/repos/{owner}/{repo}/commits",
+            params={
+                "per_page": 1,
+                "page": 1,
+            },
+        )
+
+        if response.status_code in {
+            409,
+            404,
+        }:
+
+            return 0
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        if not isinstance(data, list) or not data:
+
+            return 0
+
+        link_header = response.headers.get(
+            "Link",
+            ""
+        )
+
+        if not link_header:
+
+            return len(data)
+
+        last_page = None
+
+        for link in link_header.split(","):
+
+            if 'rel="last"' not in link:
+                continue
+
+            match = re.search(
+                r"[?&]page=(\d+)",
+                link,
+            )
+
+            if match:
+
+                last_page = int(
+                    match.group(1)
+                )
+
+            break
+
+        if last_page is None:
+
+            return len(data)
+
+        return last_page
+
     def analyze_commit_history(
         self,
         owner: str,
@@ -311,12 +390,13 @@ class GitHubClient:
             )
         )
 
-        total_commits = sum(
-            week.get(
-                "total",
-                0,
+        # Use the dedicated pagination-based count rather
+        # than relying on GitHub's commit_activity statistics.
+        total_commits = (
+            self.get_total_commit_count(
+                owner,
+                repo,
             )
-            for week in weekly_commits
         )
 
         active_weeks = sum(

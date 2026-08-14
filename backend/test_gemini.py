@@ -13,7 +13,7 @@ from app.services.ai.github_ai_analyzer import (
 )
 
 
-USERNAME = "ShivanshDubeyFr"
+USERNAME = "ShivanshDubeyONG"
 
 
 client = GitHubClient()
