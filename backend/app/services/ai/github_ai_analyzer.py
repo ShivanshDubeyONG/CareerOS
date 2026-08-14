@@ -1,12 +1,25 @@
-from app.schemas.github_ai_schema import GitHubAIAnalysis
-from app.schemas.github_schema import GitHubProfile
-from app.services.ai.github_scoring import GitHubScorer
+from typing import List
+
 from app.services.ai.gemini_client import GeminiClient
+from app.services.ai.github_scoring import GitHubScorer
+
+from app.schemas.github_ai_schema import (
+    GitHubAIAnalysis,
+)
+
+from app.schemas.github_score_schema import (
+    GitHubPortfolioScore,
+)
+
+from app.schemas.github_schema import (
+    GitHubProfile,
+)
 
 
 class GitHubAIAnalyzer:
 
     def __init__(self):
+
         self.gemini = GeminiClient()
         self.scorer = GitHubScorer()
 
@@ -15,188 +28,142 @@ class GitHubAIAnalyzer:
         profile: GitHubProfile,
     ) -> GitHubAIAnalysis:
 
-        evidence = self._build_evidence(
-            profile
-        )
-
-        prompt = f"""
-You are CareerOS's GitHub intelligence engine.
-
-Your job is to evaluate a candidate's GitHub
-portfolio using ONLY the repository evidence provided.
-
-Evaluate EVERY repository.
-
-For each repository determine:
-
-1. Whether it is a meaningful professional project.
-2. Project quality from 0 to 10.
-3. Current project stage.
-4. Project type.
-5. Technologies actually demonstrated.
-6. Evidence-based assessment.
-
-PROJECT STAGES:
-
-Use one of:
-
-- prototype
-- active_development
-- completed
-- production
-- maintained
-- learning
-- archived
-
-IMPORTANT EVALUATION RULES:
-
-A project can be incomplete and still be technically
-impressive.
-
-Do NOT treat unfinished implementation as proof
-that a project is low quality.
-
-Distinguish between:
-
-- technical ambition
-- implementation quality
-- current completeness
-- engineering maturity
-- real-world usefulness
-
-An active project with substantial implementation
-and sophisticated architecture can score highly even
-if some planned components are unfinished.
-
-Do not reward README claims when repository evidence
-contradicts them.
-
-Actual code structure, dependencies, languages,
-configuration, tests, integrations, and repository
-content are stronger evidence than future plans.
-
-Do not invent technologies.
-
-Do not assume a technology merely because the README
-mentions that it is planned.
-
-FORK OWNERSHIP:
-
-Forks require special treatment.
-
-A fork of a sophisticated upstream project is NOT
-automatically evidence of the candidate's engineering
-ability.
-
-Use the provided fork comparison evidence.
-
-If a fork has:
-
-- zero unique commits
-- zero changed files
-- zero meaningful additions
-
-then it should generally NOT count as a meaningful
-original portfolio project.
-
-If a fork contains substantial candidate-specific
-changes, it may count as meaningful work.
-
-Do NOT claim that the candidate contributed code
-unless the supplied evidence supports that conclusion.
-
-TUTORIAL / LEARNING PROJECTS:
-
-Tutorials, coursework exercises, trivial experiments,
-empty repositories, and basic practice projects should
-generally not count as meaningful professional projects.
-
-A small project can still be meaningful if it
-demonstrates genuine engineering ability.
-
-STARS:
-
-Do not use GitHub stars as proof of technical ability.
-
-QUANTITY:
-
-Do not judge portfolio strength simply by repository
-count.
-
-The portfolio scoring engine separately rewards
-meaningful project depth with diminishing returns.
-
-YOUR TASK:
-
-Evaluate every repository independently and provide
-evidence-based conclusions.
-
-GITHUB EVIDENCE:
-
-{evidence}
-"""
-
-        return self.gemini.generate_structured(
-            prompt=prompt,
-            response_schema=GitHubAIAnalysis,
-        )
-
-    def score(
-        self,
-        profile: GitHubProfile,
-        analysis: GitHubAIAnalysis,
-    ):
-
-        return self.scorer.score(
-            profile,
-            analysis.projects,
-        )
-
-    @staticmethod
-    def _build_evidence(
-        profile: GitHubProfile,
-    ) -> dict:
-
-        repositories = []
+        repository_evidence = []
 
         for repository in profile.repositories:
 
-            repositories.append(
-                {
-                    "name": repository.name,
+            evidence = {
+                "name": repository.name,
+                "full_name": repository.full_name,
+                "description": repository.description,
 
-                    "full_name": repository.full_name,
+                "url": repository.url,
 
-                    "description": repository.description,
+                "language": repository.language,
 
-                    "primary_language": (
-                        repository.language
+                "languages": repository.languages,
+
+                "topics": repository.topics,
+
+                "stars": repository.stars,
+                "forks": repository.forks,
+
+                "is_fork": repository.is_fork,
+
+                "fork_parent": (
+                    repository.fork_parent
+                ),
+
+                "fork_contribution": {
+                    "available": (
+                        repository
+                        .fork_contribution_available
                     ),
 
-                    "languages": (
-                        repository.languages
+                    "unique_commits": (
+                        repository
+                        .fork_unique_commits
                     ),
 
-                    "dependencies": (
-                        repository.dependencies
+                    "changed_files": (
+                        repository
+                        .fork_changed_files
                     ),
 
-                    "dependency_files": (
-                        repository.dependency_files
+                    "additions": (
+                        repository
+                        .fork_additions
                     ),
 
-                    "topics": repository.topics,
+                    "deletions": (
+                        repository
+                        .fork_deletions
+                    ),
+                },
 
-                    "stars": repository.stars,
+                "readme": (
+                    repository.readme
+                    or ""
+                ),
 
-                    "forks": repository.forks,
+                "dependencies": (
+                    repository.dependencies
+                ),
 
-                    "is_fork": repository.is_fork,
+                "dependency_files": (
+                    repository.dependency_files
+                ),
 
-                    "is_archived": (
-                        repository.is_archived
+                "file_paths": (
+                    repository.file_paths
+                ),
+
+                "source_directories": (
+                    repository.source_directories
+                ),
+
+                "test_files": (
+                    repository.test_files
+                ),
+
+                "config_files": (
+                    repository.config_files
+                ),
+
+                "has_docker": (
+                    repository.has_docker
+                ),
+
+                "has_frontend": (
+                    repository.has_frontend
+                ),
+
+                "has_tests": (
+                    repository.has_tests
+                ),
+
+                "activity": {
+                    "commit_history_available": (
+                        repository
+                        .commit_history_available
                     ),
 
+                    "total_commits": (
+                        repository.total_commits
+                    ),
+
+                    "commits_last_30_days": (
+                        repository
+                        .commits_last_30_days
+                    ),
+
+                    "commits_last_90_days": (
+                        repository
+                        .commits_last_90_days
+                    ),
+
+                    "commits_last_180_days": (
+                        repository
+                        .commits_last_180_days
+                    ),
+
+                    "commits_last_365_days": (
+                        repository
+                        .commits_last_365_days
+                    ),
+
+                    "active_months_last_year": (
+                        repository
+                        .active_months_last_year
+                    ),
+
+                    "latest_commit_at": (
+                        repository
+                        .latest_commit_at
+                    ),
+                },
+
+                "dates": {
                     "created_at": (
                         repository.created_at
                     ),
@@ -205,80 +172,240 @@ GITHUB EVIDENCE:
                         repository.updated_at
                     ),
 
-                    "readme": (
-                        repository.readme[:8000]
-                        if repository.readme
-                        else None
+                    "pushed_at": (
+                        repository.pushed_at
                     ),
+                },
+            }
 
-                    # Repository structure
-                    "source_directories": (
-                        repository.source_directories
-                    ),
-
-                    "test_files": (
-                        repository.test_files[:50]
-                    ),
-
-                    "config_files": (
-                        repository.config_files[:50]
-                    ),
-
-                    "has_docker": (
-                        repository.has_docker
-                    ),
-
-                    "has_frontend": (
-                        repository.has_frontend
-                    ),
-
-                    "has_tests": (
-                        repository.has_tests
-                    ),
-
-                    # Fork ownership evidence
-                    "fork_parent": (
-                        repository.fork_parent
-                    ),
-
-                    "fork_unique_commits": (
-                        repository.fork_unique_commits
-                    ),
-
-                    "fork_changed_files": (
-                        repository.fork_changed_files
-                    ),
-
-                    "fork_additions": (
-                        repository.fork_additions
-                    ),
-
-                    "fork_deletions": (
-                        repository.fork_deletions
-                    ),
-
-                    "fork_contribution_available": (
-                        repository.fork_contribution_available
-                    ),
-                }
+            repository_evidence.append(
+                evidence
             )
 
-        return {
-            "profile": {
-                "username": profile.username,
+        prompt = f"""
+You are the GitHub intelligence engine for CareerOS.
 
-                "name": profile.name,
+Your job is to evaluate a candidate's GitHub portfolio
+using ONLY the repository evidence provided below.
 
-                "bio": profile.bio,
+Do NOT assume that README claims are true unless
+repository evidence supports them.
 
-                "public_repository_count": (
-                    profile.public_repository_count
-                ),
+Do NOT reward a project simply because its name sounds
+impressive.
 
-                "followers": profile.followers,
+Do NOT confuse repository size with engineering quality.
 
-                "following": profile.following,
-            },
+The candidate is:
 
-            "repositories": repositories,
-        }
+Username:
+{profile.username}
+
+Name:
+{profile.name}
+
+Bio:
+{profile.bio}
+
+Public repositories:
+{profile.public_repository_count}
+
+Followers:
+{profile.followers}
+
+Following:
+{profile.following}
+
+
+==================================================
+REPOSITORY EVIDENCE
+==================================================
+
+{repository_evidence}
+
+
+==================================================
+EVALUATION RULES
+==================================================
+
+For EVERY repository:
+
+1. Determine whether it is a meaningful portfolio project.
+
+A meaningful project should demonstrate substantial
+engineering, problem solving, implementation, or domain
+knowledge.
+
+Examples:
+
+- End-to-end applications
+- ML/data projects with actual implementation
+- Backend systems
+- Full-stack applications
+- APIs
+- Developer tools
+- AI applications
+- Data engineering systems
+- Infrastructure/DevOps projects
+- Non-trivial browser/mobile applications
+
+Do NOT automatically mark something meaningful merely
+because it contains many files.
+
+Do NOT automatically reject small projects if they solve
+a real problem well.
+
+2. Identify the project stage:
+
+Possible values include:
+
+- learning
+- prototype
+- active_development
+- completed
+- maintained
+- abandoned
+
+Use repository evidence.
+
+3. Identify the project type.
+
+Examples:
+
+- machine_learning
+- backend_service
+- full_stack
+- web_application
+- ai_application
+- data_engineering
+- browser_extension
+- mobile_application
+- developer_tool
+- cli
+- automation
+- library
+- learning_project
+
+4. Give a project score from 0 to 10.
+
+Consider:
+
+- technical complexity
+- implementation depth
+- completeness
+- engineering practices
+- testing
+- architecture
+- integrations
+- deployment
+- originality
+- real-world usefulness
+
+IMPORTANT:
+
+A project that is technically sophisticated but incomplete
+can still score well, but do not treat planned features
+as implemented features.
+
+5. Identify technologies ONLY when supported by:
+
+- source files
+- dependency files
+- language data
+- configuration
+- repository structure
+
+Do not blindly copy technologies mentioned in a README.
+
+6. Write a concise assessment explaining WHY the project
+received its score.
+
+7. Detect tutorial/learning repositories.
+
+Repositories clearly following a tutorial/course should
+generally be marked:
+
+meaningful_project = false
+
+unless there is strong evidence of substantial original
+development.
+
+8. Detect forks carefully.
+
+A fork is NOT automatically bad.
+
+Use the fork comparison evidence:
+
+- unique commits
+- changed files
+- additions
+- deletions
+
+A fork with essentially no candidate changes should
+generally NOT count as meaningful original portfolio work.
+
+A heavily modified fork may still be meaningful.
+
+Never claim that a candidate made substantial changes
+unless the supplied evidence supports it.
+
+9. Quantity matters.
+
+A candidate with several substantive projects should
+receive more portfolio-depth credit than a candidate with
+only one project.
+
+However, do NOT reward repository spam.
+
+Ten tiny projects should not beat three substantial ones.
+
+10. Distinguish repository activity from project quality.
+
+Recent commits do NOT automatically mean a project is good.
+
+A project can be high quality but inactive because it is
+finished.
+
+Likewise, frequent commits do not automatically indicate
+high engineering quality.
+
+
+==================================================
+IMPORTANT
+==================================================
+
+Base every evaluation on the supplied evidence.
+
+Do not invent:
+
+- technologies
+- deployments
+- tests
+- databases
+- frontend code
+- features
+- users
+- production usage
+- contributions
+
+If evidence is missing, say that evidence is missing.
+
+Return the structured response exactly according to the
+provided schema.
+"""
+
+        return self.gemini.generate_structured(
+            prompt,
+            GitHubAIAnalysis,
+        )
+
+    def score(
+        self,
+        profile: GitHubProfile,
+        analysis: GitHubAIAnalysis,
+    ) -> GitHubPortfolioScore:
+
+        return self.scorer.score(
+            profile,
+            analysis.projects,
+        )

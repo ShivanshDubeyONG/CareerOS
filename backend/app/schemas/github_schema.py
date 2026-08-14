@@ -10,6 +10,7 @@ class GitHubRepository(BaseModel):
     url: str
 
     language: Optional[str] = None
+
     languages: Dict[str, int] = Field(
         default_factory=dict
     )
@@ -28,6 +29,8 @@ class GitHubRepository(BaseModel):
 
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+
+    pushed_at: Optional[str] = None
 
     readme: Optional[str] = None
 
@@ -60,6 +63,23 @@ class GitHubRepository(BaseModel):
     has_frontend: bool = False
     has_tests: bool = False
 
+    # Commit/activity evidence
+    total_commits: int = 0
+
+    commits_last_30_days: int = 0
+
+    commits_last_90_days: int = 0
+
+    commits_last_180_days: int = 0
+
+    commits_last_365_days: int = 0
+
+    active_months_last_year: int = 0
+
+    latest_commit_at: Optional[str] = None
+
+    commit_history_available: bool = False
+
     # Fork ownership evidence
     fork_parent: Optional[str] = None
 
@@ -78,6 +98,7 @@ class GitHubProfile(BaseModel):
     username: str
 
     name: Optional[str] = None
+
     bio: Optional[str] = None
 
     profile_url: str
@@ -85,6 +106,7 @@ class GitHubProfile(BaseModel):
     public_repository_count: int = 0
 
     followers: int = 0
+
     following: int = 0
 
     repositories: List[GitHubRepository] = Field(

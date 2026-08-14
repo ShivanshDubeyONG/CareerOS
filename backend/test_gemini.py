@@ -13,7 +13,9 @@ from app.services.ai.github_ai_analyzer import (
 )
 
 
-USERNAME = "synshami"
+USERNAME = "ShivanshDubeyFr"
+
+
 client = GitHubClient()
 
 github_analyzer = GitHubAnalyzer()
@@ -53,6 +55,10 @@ for repo in repositories_data:
         f"Processing: {repo_name}"
     )
 
+    # -------------------------------
+    # Languages
+    # -------------------------------
+
     try:
 
         languages = (
@@ -66,6 +72,10 @@ for repo in repositories_data:
 
         languages = {}
 
+    # -------------------------------
+    # README
+    # -------------------------------
+
     try:
 
         readme = (
@@ -78,6 +88,10 @@ for repo in repositories_data:
     except Exception:
 
         readme = None
+
+    # -------------------------------
+    # Dependencies
+    # -------------------------------
 
     dependency_files = {}
 
@@ -119,9 +133,9 @@ for repo in repositories_data:
         )
     )
 
-    # ------------------------------------
+    # -------------------------------
     # Repository structure
-    # ------------------------------------
+    # -------------------------------
 
     try:
 
@@ -143,9 +157,40 @@ for repo in repositories_data:
         )
     )
 
-    # ------------------------------------
-    # Fork ownership analysis
-    # ------------------------------------
+    # -------------------------------
+    # Commit intelligence
+    # -------------------------------
+
+    try:
+
+        commit_data = (
+            client.analyze_commit_history(
+                owner,
+                repo_name,
+            )
+        )
+
+    except Exception as error:
+
+        print(
+            f"Commit analysis failed for "
+            f"{repo_name}: {error}"
+        )
+
+        commit_data = {
+            "available": False,
+            "total_commits": 0,
+            "commits_last_30_days": 0,
+            "commits_last_90_days": 0,
+            "commits_last_180_days": 0,
+            "commits_last_365_days": 0,
+            "active_months_last_year": 0,
+            "latest_commit_at": None,
+        }
+
+    # -------------------------------
+    # Fork ownership
+    # -------------------------------
 
     fork_parent = None
 
@@ -191,7 +236,9 @@ for repo in repositories_data:
                 )
 
                 fork_contribution_available = (
-                    comparison["available"]
+                    comparison[
+                        "available"
+                    ]
                 )
 
                 fork_unique_commits = (
@@ -282,6 +329,10 @@ for repo in repositories_data:
             "updated_at"
         ),
 
+        pushed_at=repo.get(
+            "pushed_at"
+        ),
+
         readme=readme,
 
         dependencies=dependencies,
@@ -328,6 +379,56 @@ for repo in repositories_data:
             ]
         ),
 
+        # Commit intelligence
+        total_commits=(
+            commit_data[
+                "total_commits"
+            ]
+        ),
+
+        commits_last_30_days=(
+            commit_data[
+                "commits_last_30_days"
+            ]
+        ),
+
+        commits_last_90_days=(
+            commit_data[
+                "commits_last_90_days"
+            ]
+        ),
+
+        commits_last_180_days=(
+            commit_data[
+                "commits_last_180_days"
+            ]
+        ),
+
+        commits_last_365_days=(
+            commit_data[
+                "commits_last_365_days"
+            ]
+        ),
+
+        active_months_last_year=(
+            commit_data[
+                "active_months_last_year"
+            ]
+        ),
+
+        latest_commit_at=(
+            commit_data[
+                "latest_commit_at"
+            ]
+        ),
+
+        commit_history_available=(
+            commit_data[
+                "available"
+            ]
+        ),
+
+        # Fork ownership
         fork_parent=fork_parent,
 
         fork_unique_commits=(
@@ -547,6 +648,64 @@ for recommendation in (
 
     print(
         f"- {recommendation}"
+    )
+
+
+print(
+    "\n========================================"
+)
+
+print(
+    "       ACTIVITY EVIDENCE"
+)
+
+print(
+    "========================================"
+)
+
+
+for repository in repositories:
+
+    if not repository.commit_history_available:
+        continue
+
+    print(
+        f"\n{repository.name}"
+    )
+
+    print(
+        "Total commits:",
+        repository.total_commits,
+    )
+
+    print(
+        "Last 30 days:",
+        repository.commits_last_30_days,
+    )
+
+    print(
+        "Last 90 days:",
+        repository.commits_last_90_days,
+    )
+
+    print(
+        "Last 180 days:",
+        repository.commits_last_180_days,
+    )
+
+    print(
+        "Last 365 days:",
+        repository.commits_last_365_days,
+    )
+
+    print(
+        "Active months:",
+        repository.active_months_last_year,
+    )
+
+    print(
+        "Latest commit:",
+        repository.latest_commit_at,
     )
 
 

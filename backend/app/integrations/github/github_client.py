@@ -10,11 +10,18 @@ class GitHubClient:
     BASE_URL = "https://api.github.com"
 
     def __init__(self):
-        self.token = os.getenv("GITHUB_TOKEN")
+
+        self.token = os.getenv(
+            "GITHUB_TOKEN"
+        )
 
         headers = {
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
+            "Accept": (
+                "application/vnd.github+json"
+            ),
+            "X-GitHub-Api-Version": (
+                "2022-11-28"
+            ),
         }
 
         if self.token:
@@ -114,6 +121,7 @@ class GitHubClient:
             return None
 
         try:
+
             return base64.b64decode(
                 content
             ).decode(
@@ -122,6 +130,7 @@ class GitHubClient:
             )
 
         except Exception:
+
             return None
 
     def get_repository_file(
@@ -151,6 +160,7 @@ class GitHubClient:
             return None
 
         try:
+
             return base64.b64decode(
                 content
             ).decode(
@@ -159,6 +169,7 @@ class GitHubClient:
             )
 
         except Exception:
+
             return None
 
     def get_repository_tree(
@@ -188,5 +199,315 @@ class GitHubClient:
             if item.get("type") == "blob"
         ]
 
+    def get_commit_activity(
+        self,
+        owner: str,
+        repo: str,
+    ) -> dict:
+
+        response = self.client.get(
+            f"/repos/{owner}/{repo}/stats/commit_activity"
+        )
+
+        if response.status_code == 202:
+
+            return {
+                "available": False,
+                "weekly_commits": [],
+            }
+
+        if response.status_code == 204:
+
+            return {
+                "available": False,
+                "weekly_commits": [],
+            }
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        if not isinstance(data, list):
+
+            return {
+                "available": False,
+                "weekly_commits": [],
+            }
+
+        weekly_commits = []
+
+        for week in data:
+
+            weekly_commits.append(
+                {
+                    "week": week.get(
+                        "week"
+                    ),
+                    "total": week.get(
+                        "total",
+                        0,
+                    ),
+                }
+            )
+
+        return {
+            "available": True,
+            "weekly_commits": weekly_commits,
+        }
+
+    def get_recent_commits(
+        self,
+        owner: str,
+        repo: str,
+        per_page: int = 100,
+    ) -> list[dict]:
+
+        response = self.client.get(
+            f"/repos/{owner}/{repo}/commits",
+            params={
+                "per_page": min(
+                    per_page,
+                    100,
+                ),
+            },
+        )
+
+        if response.status_code == 409:
+
+            return []
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        if not isinstance(data, list):
+
+            return []
+
+        return data
+
+    def analyze_commit_history(
+        self,
+        owner: str,
+        repo: str,
+    ) -> dict:
+
+        activity = self.get_commit_activity(
+            owner,
+            repo,
+        )
+
+        recent_commits = (
+            self.get_recent_commits(
+                owner,
+                repo,
+            )
+        )
+
+        weekly_commits = (
+            activity.get(
+                "weekly_commits",
+                [],
+            )
+        )
+
+        total_commits = sum(
+            week.get(
+                "total",
+                0,
+            )
+            for week in weekly_commits
+        )
+
+        active_weeks = sum(
+            1
+            for week in weekly_commits
+            if week.get(
+                "total",
+                0,
+            ) > 0
+        )
+
+        active_months = set()
+
+        commits_last_30 = 0
+        commits_last_90 = 0
+        commits_last_180 = 0
+        commits_last_365 = 0
+
+        from datetime import datetime, timezone
+
+        now = datetime.now(
+            timezone.utc
+        )
+
+        latest_commit_at = None
+
+        for commit in recent_commits:
+
+            commit_data = commit.get(
+                "commit",
+                {},
+            )
+
+            author_data = commit_data.get(
+                "author",
+                {},
+            )
+
+            date_string = author_data.get(
+                "date"
+            )
+
+            if not date_string:
+                continue
+
+            try:
+
+                commit_date = (
+                    datetime.fromisoformat(
+                        date_string.replace(
+                            "Z",
+                            "+00:00",
+                        )
+                    )
+                )
+
+            except ValueError:
+
+                continue
+
+            if (
+                latest_commit_at is None
+                or commit_date
+                > latest_commit_at
+            ):
+
+                latest_commit_at = (
+                    commit_date
+                )
+
+            age_days = (
+                now - commit_date
+            ).days
+
+            if age_days <= 30:
+                commits_last_30 += 1
+
+            if age_days <= 90:
+                commits_last_90 += 1
+
+            if age_days <= 180:
+                commits_last_180 += 1
+
+            if age_days <= 365:
+                commits_last_365 += 1
+
+            if age_days <= 365:
+
+                active_months.add(
+                    (
+                        commit_date.year,
+                        commit_date.month,
+                    )
+                )
+
+        if latest_commit_at:
+
+            latest_commit_string = (
+                latest_commit_at.isoformat()
+            )
+
+        else:
+
+            latest_commit_string = None
+
+        return {
+            "available": (
+                activity.get(
+                    "available",
+                    False,
+                )
+                or bool(recent_commits)
+            ),
+            "total_commits": total_commits,
+            "active_weeks": active_weeks,
+            "active_months_last_year": len(
+                active_months
+            ),
+            "commits_last_30_days": commits_last_30,
+            "commits_last_90_days": commits_last_90,
+            "commits_last_180_days": commits_last_180,
+            "commits_last_365_days": commits_last_365,
+            "latest_commit_at": (
+                latest_commit_string
+            ),
+        }
+
+    def compare_fork_to_parent(
+        self,
+        fork_owner: str,
+        fork_repo: str,
+        fork_branch: str,
+        parent_full_name: str,
+        parent_branch: str,
+    ) -> dict:
+
+        endpoint = (
+            f"/repos/{parent_full_name}/compare/"
+            f"{parent_branch}...{fork_owner}:"
+            f"{fork_branch}"
+        )
+
+        response = self.client.get(
+            endpoint
+        )
+
+        if response.status_code in {
+            404,
+            409,
+        }:
+
+            return {
+                "available": False,
+                "unique_commits": 0,
+                "changed_files": 0,
+                "additions": 0,
+                "deletions": 0,
+            }
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        return {
+            "available": True,
+
+            "unique_commits": len(
+                data.get(
+                    "commits",
+                    [],
+                )
+            ),
+
+            "changed_files": len(
+                data.get(
+                    "files",
+                    [],
+                )
+            ),
+
+            "additions": data.get(
+                "additions",
+                0,
+            ),
+
+            "deletions": data.get(
+                "deletions",
+                0,
+            ),
+        }
+
     def close(self):
+
         self.client.close()
