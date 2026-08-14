@@ -64,12 +64,12 @@ class GitHubScorer:
         )
 
         overall = (
-            project_quality * 0.35
-            + portfolio_depth * 0.20
+            project_quality * 0.30
+            + portfolio_depth * 0.30
             + technical_breadth * 0.15
             + activity * 0.10
             + documentation * 0.10
-            + originality * 0.10
+            + originality * 0.05
         )
 
         dimensions = {
