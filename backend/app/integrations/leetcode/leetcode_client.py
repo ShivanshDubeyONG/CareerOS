@@ -1,3 +1,5 @@
+import json
+
 import httpx
 
 from app.schemas.leetcode_schema import (
@@ -37,6 +39,7 @@ class LeetCodeClient:
         query = """
         query getUserProfile($username: String!) {
             matchedUser(username: $username) {
+
                 username
 
                 profile {
@@ -74,6 +77,8 @@ class LeetCodeClient:
                         problemsSolved
                     }
                 }
+
+                submissionCalendar
             }
         }
         """
@@ -93,8 +98,10 @@ class LeetCodeClient:
         data = response.json()
 
         if data.get("errors"):
+
             raise ValueError(
-                f"LeetCode API error: {data['errors']}"
+                f"LeetCode API error: "
+                f"{data['errors']}"
             )
 
         matched_user = (
@@ -103,9 +110,15 @@ class LeetCodeClient:
         )
 
         if matched_user is None:
+
             raise ValueError(
-                f"LeetCode user '{username}' not found."
+                f"LeetCode user "
+                f"'{username}' not found."
             )
+
+        # --------------------------------
+        # SOLVED / SUBMISSION STATS
+        # --------------------------------
 
         stats = (
             matched_user
@@ -136,15 +149,19 @@ class LeetCodeClient:
             if difficulty not in solved:
                 continue
 
-            solved[difficulty] = item.get(
-                "count",
+            solved[difficulty] = max(
+                item.get("count", 0),
                 0,
             )
 
-            submissions[difficulty] = item.get(
-                "submissions",
+            submissions[difficulty] = max(
+                item.get("submissions", 0),
                 0,
             )
+
+        # --------------------------------
+        # LANGUAGES
+        # --------------------------------
 
         languages = []
 
@@ -159,12 +176,19 @@ class LeetCodeClient:
                         "languageName",
                         "Unknown",
                     ),
-                    problems_solved=item.get(
-                        "problemsSolved",
+                    problems_solved=max(
+                        item.get(
+                            "problemsSolved",
+                            0,
+                        ),
                         0,
                     ),
                 )
             )
+
+        # --------------------------------
+        # SKILLS
+        # --------------------------------
 
         skills = []
 
@@ -181,9 +205,11 @@ class LeetCodeClient:
             "fundamental",
         ]:
 
-            for item in tag_problem_counts.get(
-                level,
-                [],
+            for item in (
+                tag_problem_counts.get(
+                    level,
+                    [],
+                )
             ):
 
                 skills.append(
@@ -192,13 +218,82 @@ class LeetCodeClient:
                             "tagName",
                             "Unknown",
                         ),
-                        problems_solved=item.get(
-                            "problemsSolved",
+                        problems_solved=max(
+                            item.get(
+                                "problemsSolved",
+                                0,
+                            ),
                             0,
                         ),
                         level=level,
                     )
                 )
+
+        # --------------------------------
+        # SUBMISSION CALENDAR
+        # --------------------------------
+
+        submission_calendar = {}
+
+        raw_calendar = matched_user.get(
+            "submissionCalendar"
+        )
+
+        if raw_calendar:
+
+            try:
+
+                if isinstance(
+                    raw_calendar,
+                    str,
+                ):
+
+                    parsed_calendar = json.loads(
+                        raw_calendar
+                    )
+
+                elif isinstance(
+                    raw_calendar,
+                    dict,
+                ):
+
+                    parsed_calendar = raw_calendar
+
+                else:
+
+                    parsed_calendar = {}
+
+                for timestamp, count in (
+                    parsed_calendar.items()
+                ):
+
+                    try:
+
+                        submission_calendar[
+                            int(timestamp)
+                        ] = max(
+                            int(count),
+                            0,
+                        )
+
+                    except (
+                        TypeError,
+                        ValueError,
+                    ):
+
+                        continue
+
+            except (
+                json.JSONDecodeError,
+                TypeError,
+                ValueError,
+            ):
+
+                submission_calendar = {}
+
+        # --------------------------------
+        # PROFILE
+        # --------------------------------
 
         profile = matched_user.get(
             "profile",
@@ -217,12 +312,23 @@ class LeetCodeClient:
             easy_solved=solved["Easy"],
             medium_solved=solved["Medium"],
             hard_solved=solved["Hard"],
-            total_submissions=submissions["All"],
-            easy_submissions=submissions["Easy"],
-            medium_submissions=submissions["Medium"],
-            hard_submissions=submissions["Hard"],
+            total_submissions=(
+                submissions["All"]
+            ),
+            easy_submissions=(
+                submissions["Easy"]
+            ),
+            medium_submissions=(
+                submissions["Medium"]
+            ),
+            hard_submissions=(
+                submissions["Hard"]
+            ),
             languages=languages,
             skills=skills,
+            submission_calendar=(
+                submission_calendar
+            ),
         )
 
     def close(self):
