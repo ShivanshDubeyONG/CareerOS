@@ -1,5 +1,4 @@
 import os
-from urllib.parse import urlparse
 
 import requests
 from dotenv import load_dotenv
@@ -9,7 +8,7 @@ load_dotenv()
 
 
 class LinkedInAcquisitionError(Exception):
-    """Raised when LinkedIn profile acquisition fails."""
+    pass
 
 
 class LinkedInClient:
@@ -20,9 +19,9 @@ class LinkedInClient:
 
         LinkedIn URL
             ↓
-        ScrapingDog
+        Bright Data
             ↓
-        normalized raw profile dictionary
+        raw LinkedIn profile dictionary
 
     This class does NOT:
         - create LinkedInProfile objects
@@ -31,128 +30,154 @@ class LinkedInClient:
         - perform cross-source reasoning
     """
 
-    BASE_URL = "https://api.scrapingdog.com/profile/"
+    BASE_URL = (
+        "https://api.brightdata.com"
+        "/datasets/v3/scrape"
+    )
 
-    def __init__(self, api_key: str | None = None):
+    DATASET_ID = (
+        "gd_l1viktl72bvl7bjuj0"
+    )
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+    ):
+
         self.api_key = (
             api_key
-            or os.getenv("SCRAPINGDOG_API_KEY")
+            or os.getenv(
+                "BRIGHTDATA_API_KEY"
+            )
         )
 
     @staticmethod
-    def extract_profile_id(
+    def validate_profile_url(
         linkedin_url: str,
     ) -> str:
+
         if not linkedin_url:
             raise ValueError(
                 "LinkedIn URL cannot be empty."
             )
 
-        parsed = urlparse(
-            linkedin_url.strip()
-        )
+        url = linkedin_url.strip()
 
-        hostname = (
-            parsed.hostname or ""
-        ).lower()
-
-        if hostname not in {
-            "linkedin.com",
-            "www.linkedin.com",
-        }:
+        if "linkedin.com/in/" not in url:
             raise ValueError(
-                "Invalid LinkedIn URL. "
-                "Expected a linkedin.com URL."
+                "Invalid LinkedIn profile URL."
             )
 
-        parts = [
-            part.strip()
-            for part in parsed.path.split("/")
-            if part.strip()
-        ]
-
-        if (
-            len(parts) != 2
-            or parts[0].lower() != "in"
-        ):
-            raise ValueError(
-                "Invalid LinkedIn profile URL. "
-                "Expected format: "
-                "https://www.linkedin.com/in/<profile>/"
-            )
-
-        return parts[1]
+        return url
 
     def fetch_profile(
         self,
         linkedin_url: str,
     ) -> dict:
+
         if not self.api_key:
+
             raise LinkedInAcquisitionError(
-                "SCRAPINGDOG_API_KEY is not configured."
+                "BRIGHTDATA_API_KEY is not configured."
             )
 
-        profile_id = self.extract_profile_id(
-            linkedin_url
+        profile_url = (
+            self.validate_profile_url(
+                linkedin_url
+            )
         )
 
         params = {
-            "api_key": self.api_key,
-            "type": "profile",
-            "id": profile_id,
+            "dataset_id": self.DATASET_ID,
+            "format": "json",
         }
 
+        headers = {
+            "Authorization": (
+                f"Bearer {self.api_key}"
+            ),
+            "Content-Type": (
+                "application/json"
+            ),
+        }
+
+        payload = [
+            {
+                "url": profile_url,
+            }
+        ]
+
         try:
-            response = requests.get(
+
+            response = requests.post(
                 self.BASE_URL,
                 params=params,
-                timeout=60,
+                headers=headers,
+                json=payload,
+                timeout=120,
             )
+
         except requests.RequestException as exc:
+
             raise LinkedInAcquisitionError(
-                "Could not reach the LinkedIn "
-                "acquisition provider."
+                "Could not reach the Bright Data "
+                "LinkedIn acquisition provider."
             ) from exc
 
         if response.status_code != 200:
+
             raise LinkedInAcquisitionError(
-                "LinkedIn profile acquisition failed "
-                f"with HTTP {response.status_code}: "
+                "Bright Data LinkedIn profile "
+                "acquisition failed with HTTP "
+                f"{response.status_code}: "
                 f"{response.text[:500]}"
             )
 
         try:
+
             data = response.json()
+
         except ValueError as exc:
+
             raise LinkedInAcquisitionError(
-                "LinkedIn acquisition provider "
-                "returned invalid JSON."
+                "Bright Data returned invalid JSON."
             ) from exc
 
         if isinstance(data, list):
 
             if not data:
+
                 raise LinkedInAcquisitionError(
-                    "LinkedIn acquisition returned "
-                    "an empty profile response."
+                    "Bright Data returned an "
+                    "empty LinkedIn profile."
                 )
 
             profile = data[0]
 
         elif isinstance(data, dict):
 
+            if "snapshot_id" in data:
+
+                raise LinkedInAcquisitionError(
+                    "Bright Data returned an asynchronous "
+                    "snapshot instead of completed "
+                    "profile data."
+                )
+
             profile = data
 
         else:
+
             raise LinkedInAcquisitionError(
-                "LinkedIn acquisition provider "
-                "returned an unexpected response type."
+                "Bright Data returned an unexpected "
+                "response type."
             )
 
         if not isinstance(profile, dict):
+
             raise LinkedInAcquisitionError(
-                "LinkedIn acquisition provider "
-                "returned an invalid profile object."
+                "Bright Data returned an invalid "
+                "LinkedIn profile object."
             )
 
         return profile
