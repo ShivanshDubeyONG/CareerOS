@@ -14,7 +14,7 @@ An AI-powered platform that helps students improve their resumes, identify skill
 ## Features
 
 - Resume Upload ✅
-- Resume Parsing 🚧
+- Resume Parsing 
 - ATS Score
 - Job Description Matching
 - Skill Gap Detection
