@@ -1,226 +1,94 @@
-from pathlib import Path
-
 from app.integrations.linkedin.linkedin_parser import linkedin_parser
-from app.services.linkedin.linkedin_normalizer import linkedin_normalizer
 from app.services.linkedin.linkedin_service import linkedin_service
 
 
-# Change this to wherever you keep the LinkedIn export.
-LINKEDIN_EXPORT_DIR = Path("data/linkedin")
+RAW_PROFILE = {
+    "fullName": "Shivansh Dubey",
+    "headline": "",
+    "location": "",
+    "experience": [
+        {
+            "company_name": "Manipal Institute of Technology",
+            "position": "",
+            "starts_at": "2024",
+            "ends_at": "Present",
+            "summary": "",
+        }
+    ],
+    "education": [
+        {
+            "college_name": None,
+            "starts_at": "2022",
+            "ends_at": "2023",
+        }
+    ],
+    "certification": [
+        {
+            "certification": "Supervised Machine Learning: Regression and Classification",
+            "company_name": "DeepLearning.AI",
+            "credential_id": "Credential ID LL6LRJQCDYOH",
+            "credential_url": "https://www.coursera.org/account/accomplishments/records/LL6LRJQCDYOH",
+            "issue_date": "Issued Jan 2025 Expires May 2025",
+        }
+    ],
+    "projects": [],
+    "skills": None,
+}
 
 
 def main():
-    print("=" * 50)
-    print("LINKEDIN INTELLIGENCE")
-    print("=" * 50)
+    print("=" * 60)
+    print("CAREEROS LINKEDIN PIPELINE")
+    print("=" * 60)
 
-    print(f"Export directory: {LINKEDIN_EXPORT_DIR}")
+    print("\nParsing LinkedIn profile...")
 
-    if not LINKEDIN_EXPORT_DIR.exists():
-        print()
-        print("ERROR: LinkedIn export directory not found.")
-        print()
-        print("Create:")
-        print("  data/linkedin/")
-        print()
-        print("and put your LinkedIn CSV export files there.")
-        return
-
-    # ---------------------------------------------
-    # PARSE
-    # ---------------------------------------------
-
-    profile = linkedin_parser.parse(
-        LINKEDIN_EXPORT_DIR
+    profile = linkedin_parser.parse_api_response(
+        RAW_PROFILE
     )
 
-    print("\nPROFILE")
-    print(f"Name: {profile.name}")
-    print(f"Headline: {profile.headline}")
-    print(f"Location: {profile.location}")
+    print("Parsing successful.")
 
-    # ---------------------------------------------
-    # NORMALIZE
-    # ---------------------------------------------
+    analysis = linkedin_service.analyze(profile)
 
-    profile = linkedin_normalizer.normalize_profile(
-        profile
-    )
+    print("Analysis successful.")
 
-    print("\nEXPERIENCE")
+    print("\nRESULTS")
+    print("-" * 60)
 
-    for experience in profile.experiences:
+    print(f"Name: {analysis.name}")
+    print(f"Headline: {analysis.headline}")
+    print(f"Location: {analysis.location}")
+    print(f"Current title: {analysis.current_title}")
+    print(f"Current company: {analysis.current_company}")
+    print(f"Experience count: {analysis.experience_count}")
+    print(f"Education count: {analysis.education_count}")
+    print(f"Skill count: {analysis.skill_count}")
+    print(f"Project count: {analysis.project_count}")
+    print(f"Certification count: {analysis.certification_count}")
 
-        print(
-            f"  {experience.title} "
-            f"@ {experience.company}"
-        )
-
-        if experience.start_date or experience.end_date:
-            print(
-                f"    {experience.start_date or '?'}"
-                f" → "
-                f"{experience.end_date or 'Present'}"
-            )
-
-    # ---------------------------------------------
-    # SKILLS
-    # ---------------------------------------------
-
-    print("\nSKILLS")
-
-    if profile.skills:
-        for skill in profile.skills:
-            print(f"  - {skill}")
-    else:
-        print("  None found")
-
-    # ---------------------------------------------
-    # EDUCATION
-    # ---------------------------------------------
-
-    print("\nEDUCATION")
-
-    for education in profile.education:
-
-        print(
-            f"  {education.institution}"
-        )
-
-        if education.degree:
-            print(
-                f"    Degree: {education.degree}"
-            )
-
-        if education.field_of_study:
-            print(
-                f"    Field: {education.field_of_study}"
-            )
-
-    # ---------------------------------------------
-    # PROJECTS
-    # ---------------------------------------------
-
-    print("\nPROJECTS")
-
-    if profile.projects:
-
-        for project in profile.projects:
-
-            print(
-                f"  - {project.name}"
-            )
-
-            if project.url:
-                print(
-                    f"    URL: {project.url}"
-                )
-
-    else:
-        print("  None found")
-
-    # ---------------------------------------------
-    # CERTIFICATIONS
-    # ---------------------------------------------
-
-    print("\nCERTIFICATIONS")
-
-    if profile.certifications:
-
-        for certification in (
-            profile.certifications
-        ):
-
-            print(
-                f"  - {certification.name}"
-            )
-
-            if certification.issuer:
-                print(
-                    f"    Issuer: "
-                    f"{certification.issuer}"
-                )
-
-    else:
-        print("  None found")
-
-    # ---------------------------------------------
-    # ANALYSIS
-    # ---------------------------------------------
-
-    analysis = linkedin_service.analyze(
-        profile
-    )
-
-    print("\n" + "=" * 50)
-    print("CAREER ANALYSIS")
-    print("=" * 50)
-
-    print(
-        f"Current role: "
-        f"{analysis.current_title or 'Not found'}"
-    )
-
-    print(
-        f"Current company: "
-        f"{analysis.current_company or 'Not found'}"
-    )
-
-    print(
-        f"Experience count: "
-        f"{analysis.experience_count}"
-    )
-
-    print(
-        f"Education count: "
-        f"{analysis.education_count}"
-    )
-
-    print(
-        f"Skill count: "
-        f"{analysis.skill_count}"
-    )
-
-    print(
-        f"Project count: "
-        f"{analysis.project_count}"
-    )
-
-    print(
-        f"Certification count: "
-        f"{analysis.certification_count}"
-    )
+    print("\nClaimed skills:")
+    for skill in analysis.claimed_skills:
+        print(f"  - {skill}")
 
     print("\nCareer domains:")
-
     for domain in analysis.career_domains:
-        print(f"  + {domain}")
+        print(f"  - {domain}")
 
     print("\nCareer signals:")
-
-    for signal in analysis.signals:
-        print(f"  - {signal}")
-
-    print("\nEvidence signals:")
-
     for signal in analysis.career_signals:
-
         print(
-            f"  {signal.signal}: "
+            f"  - {signal.signal}: "
             f"{signal.evidence}"
         )
 
-    print("\nClaimed skills:")
+    print("\nProfile signals:")
+    for signal in analysis.signals:
+        print(f"  - {signal}")
 
-    for skill in analysis.skill_evidence:
-        print(
-            f"  {skill.skill}: "
-            f"claimed via {', '.join(skill.sources)}"
-        )
-
-    print("\n" + "=" * 50)
-    print("LINKEDIN ANALYSIS COMPLETE")
-    print("=" * 50)
+    print("\n" + "=" * 60)
+    print("LINKEDIN PIPELINE COMPLETE")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

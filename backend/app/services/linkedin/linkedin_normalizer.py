@@ -18,9 +18,11 @@ class LinkedInNormalizer:
         "js": "JavaScript",
         "typescript": "TypeScript",
         "ts": "TypeScript",
+        "react": "React",
         "react.js": "React",
         "reactjs": "React",
         "react js": "React",
+        "node": "Node.js",
         "node.js": "Node.js",
         "nodejs": "Node.js",
         "fast api": "FastAPI",
@@ -29,6 +31,7 @@ class LinkedInNormalizer:
         "scikit learn": "Scikit-learn",
         "scikit-learn": "Scikit-learn",
         "machine learning": "Machine Learning",
+        "ml": "Machine Learning",
         "deep learning": "Deep Learning",
         "artificial intelligence": "Artificial Intelligence",
         "ai": "Artificial Intelligence",
@@ -43,8 +46,13 @@ class LinkedInNormalizer:
         "aws": "AWS",
         "google cloud": "Google Cloud",
         "gcp": "Google Cloud",
+        "azure": "Azure",
         "git": "Git",
         "github": "GitHub",
+        "rest api": "REST API",
+        "rest apis": "REST API",
+        "restful api": "REST API",
+        "sql": "SQL",
     }
 
     DOMAIN_KEYWORDS = {
@@ -59,6 +67,7 @@ class LinkedInNormalizer:
             "fullstack",
             "web developer",
             "application developer",
+            "software development",
         },
         "machine_learning": {
             "machine learning",
@@ -99,23 +108,35 @@ class LinkedInNormalizer:
         },
     }
 
+    @staticmethod
+    def normalize_text(
+        value: str | None,
+    ) -> str | None:
+
+        if value is None:
+            return None
+
+        value = re.sub(
+            r"\s+",
+            " ",
+            str(value),
+        ).strip()
+
+        return value or None
+
     @classmethod
     def normalize_skill(
         cls,
         skill: str,
     ) -> str:
 
-        cleaned = " ".join(
-            skill.strip().split()
-        )
+        cleaned = cls.normalize_text(skill)
 
         if not cleaned:
             return ""
 
-        key = cleaned.lower()
-
         return cls.SKILL_ALIASES.get(
-            key,
+            cleaned.lower(),
             cleaned,
         )
 
@@ -150,22 +171,6 @@ class LinkedInNormalizer:
             key=str.lower,
         )
 
-    @staticmethod
-    def normalize_text(
-        value: str | None,
-    ) -> str | None:
-
-        if not value:
-            return None
-
-        value = re.sub(
-            r"\s+",
-            " ",
-            value,
-        )
-
-        return value.strip()
-
     @classmethod
     def normalize_experience(
         cls,
@@ -189,33 +194,22 @@ class LinkedInNormalizer:
 
             normalized.append(
                 LinkedInExperience(
-                    company=(
-                        company
-                        or "Unknown"
+                    company=company or "Unknown",
+                    title=title or "Unknown",
+                    start_date=cls.normalize_text(
+                        experience.start_date
                     ),
-                    title=(
-                        title
-                        or "Unknown"
+                    end_date=cls.normalize_text(
+                        experience.end_date
                     ),
-                    start_date=(
-                        cls.normalize_text(
-                            experience.start_date
-                        )
+                    description=cls.normalize_text(
+                        experience.description
                     ),
-                    end_date=(
-                        cls.normalize_text(
-                            experience.end_date
-                        )
+                    employment_type=cls.normalize_text(
+                        experience.employment_type
                     ),
-                    description=(
-                        cls.normalize_text(
-                            experience.description
-                        )
-                    ),
-                    employment_type=(
-                        cls.normalize_text(
-                            experience.employment_type
-                        )
+                    location=cls.normalize_text(
+                        experience.location
                     ),
                 )
             )
@@ -230,20 +224,36 @@ class LinkedInNormalizer:
 
         text_parts = []
 
-        if profile.headline:
-            text_parts.append(
-                profile.headline
-            )
+        for value in (
+            profile.headline,
+            profile.about,
+        ):
+
+            if value:
+                text_parts.append(value)
 
         for experience in profile.experiences:
 
-            text_parts.append(
-                experience.title
-            )
+            if experience.title:
+                text_parts.append(
+                    experience.title
+                )
 
             if experience.description:
                 text_parts.append(
                     experience.description
+                )
+
+        for project in profile.projects:
+
+            if project.name:
+                text_parts.append(
+                    project.name
+                )
+
+            if project.description:
+                text_parts.append(
+                    project.description
                 )
 
         combined = " ".join(
@@ -270,28 +280,27 @@ class LinkedInNormalizer:
         profile: LinkedInProfile,
     ) -> LinkedInProfile:
 
-        return LinkedInProfile(
-            name=cls.normalize_text(
-                profile.name
-            ),
-            headline=cls.normalize_text(
-                profile.headline
-            ),
-            location=cls.normalize_text(
-                profile.location
-            ),
-            experiences=(
-                cls.normalize_experience(
+        return profile.model_copy(
+            update={
+                "name": cls.normalize_text(
+                    profile.name
+                ),
+                "headline": cls.normalize_text(
+                    profile.headline
+                ),
+                "location": cls.normalize_text(
+                    profile.location
+                ),
+                "about": cls.normalize_text(
+                    profile.about
+                ),
+                "experiences": cls.normalize_experience(
                     profile.experiences
-                )
-            ),
-            education=profile.education,
-            skills=cls.normalize_skills(
-                profile.skills
-            ),
-            certifications=profile.certifications,
-            projects=profile.projects,
-            links=profile.links,
+                ),
+                "skills": cls.normalize_skills(
+                    profile.skills
+                ),
+            }
         )
 
 
