@@ -23,7 +23,7 @@ class LinkedInParser:
 
     Supported inputs:
     - LinkedIn PDF/export
-    - ScrapingDog LinkedIn Person API response
+    - LinkedIn API/provider responses
     """
 
     SECTION_NAMES = {
@@ -36,6 +36,7 @@ class LinkedInParser:
         "licenses & certifications",
         "volunteer experience",
         "languages",
+        "links",
     }
 
     # ==================================================
@@ -476,6 +477,28 @@ class LinkedInParser:
 
         return certifications
 
+    @staticmethod
+    def _parse_pdf_links(
+        lines: list[str],
+    ) -> list[str]:
+
+        links = []
+
+        for line in lines:
+
+            value = line.strip()
+
+            if value.startswith(
+                "http://"
+            ) or value.startswith(
+                "https://"
+            ):
+                links.append(value)
+
+        return list(
+            dict.fromkeys(links)
+        )
+
     def parse(
         self,
         pdf_bytes: bytes,
@@ -510,27 +533,34 @@ class LinkedInParser:
         )
 
         return LinkedInProfile(
+
             name=name,
+
             headline=headline,
+
             location=location,
+
             experiences=self._parse_experience(
                 sections.get(
                     "experience",
                     [],
                 )
             ),
+
             education=self._parse_education(
                 sections.get(
                     "education",
                     [],
                 )
             ),
+
             skills=self._parse_skills(
                 sections.get(
                     "skills",
                     [],
                 )
             ),
+
             certifications=self._parse_certifications(
                 sections.get(
                     "certifications",
@@ -540,9 +570,17 @@ class LinkedInParser:
                     ),
                 )
             ),
+
             projects=self._parse_projects(
                 sections.get(
                     "projects",
+                    [],
+                )
+            ),
+
+            links=self._parse_pdf_links(
+                sections.get(
+                    "links",
                     [],
                 )
             ),
@@ -735,6 +773,7 @@ class LinkedInParser:
                     issue_date=cls._get_string(
                         item,
                         "issue_date",
+                        "issued_date",
                     ),
                     expiration_date=cls._get_string(
                         item,
@@ -986,6 +1025,7 @@ class LinkedInParser:
             data,
             "awards",
             "award",
+            "honorsAndAwards",
         ):
 
             if not isinstance(
@@ -1155,6 +1195,61 @@ class LinkedInParser:
         return volunteering
 
     # ==================================================
+    # API LINKS
+    # ==================================================
+
+    @classmethod
+    def _parse_api_links(
+        cls,
+        data: dict,
+    ) -> list[str]:
+
+        raw_links = data.get(
+            "links",
+            []
+        )
+
+        if not isinstance(
+            raw_links,
+            list,
+        ):
+            return []
+
+        links = []
+
+        for item in raw_links:
+
+            if isinstance(
+                item,
+                str,
+            ):
+
+                value = cls._clean(
+                    item
+                )
+
+                if value:
+                    links.append(value)
+
+            elif isinstance(
+                item,
+                dict,
+            ):
+
+                url = cls._get_string(
+                    item,
+                    "url",
+                    "link",
+                )
+
+                if url:
+                    links.append(url)
+
+        return list(
+            dict.fromkeys(links)
+        )
+
+    # ==================================================
     # API RESPONSE → CANONICAL PROFILE
     # ==================================================
 
@@ -1179,68 +1274,96 @@ class LinkedInParser:
                 "full_name",
                 "name",
             ),
+
             headline=cls._get_string(
                 data,
                 "headline",
             ),
+
             location=cls._get_string(
                 data,
                 "location",
             ),
+
             about=cls._get_string(
                 data,
                 "about",
                 "summary",
             ),
+
             profile_url=cls._get_string(
                 data,
                 "profile_url",
                 "linkedin_url",
                 "url",
             ),
+
             public_identifier=cls._get_string(
                 data,
                 "public_identifier",
             ),
+
             followers=cls._get_int(
                 data,
                 "followers",
             ),
+
             connections=cls._get_int(
                 data,
                 "connections",
             ),
+
             experiences=cls._parse_api_experience(
                 data
             ),
+
             education=cls._parse_api_education(
                 data
             ),
+
             skills=cls._parse_api_skills(
                 data
             ),
-            certifications=cls._parse_api_certifications(
-                data
+
+            certifications=(
+                cls._parse_api_certifications(
+                    data
+                )
             ),
+
             projects=cls._parse_api_projects(
                 data
             ),
+
             languages=cls._parse_api_languages(
                 data
             ),
-            organizations=cls._parse_api_organizations(
-                data
+
+            organizations=(
+                cls._parse_api_organizations(
+                    data
+                )
             ),
+
             awards=cls._parse_api_awards(
                 data
             ),
-            publications=cls._parse_api_publications(
+
+            publications=(
+                cls._parse_api_publications(
+                    data
+                )
+            ),
+
+            volunteering=(
+                cls._parse_api_volunteering(
+                    data
+                )
+            ),
+
+            links=cls._parse_api_links(
                 data
             ),
-            volunteering=cls._parse_api_volunteering(
-                data
-            ),
-            links=[],
         )
 
 
