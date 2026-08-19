@@ -16,11 +16,12 @@ class LinkedInRater:
     """
     AI-powered LinkedIn profile intelligence engine.
 
-    The rater evaluates the LinkedIn profile using the
-    canonical LinkedInProfile and LinkedInAnalysis.
+    Gemini evaluates LinkedIn quality and recommendations,
+    while CareerOS UnifiedCandidateProfile provides the
+    deterministic cross-source evidence.
 
-    It never treats missing LinkedIn information as proof
-    that the candidate lacks a skill, project, or experience.
+    Gemini must NEVER invent evidence or decide that missing
+    LinkedIn data means the candidate lacks something.
     """
 
     def __init__(self):
@@ -30,32 +31,56 @@ class LinkedInRater:
         self,
         profile: LinkedInProfile,
         analysis: LinkedInAnalysis,
+        unified_profile=None,
     ) -> LinkedInRating:
-        evidence_packet = self._build_evidence_packet(
-            profile,
-            analysis,
+
+        evidence_packet = (
+            self._build_evidence_packet(
+                profile,
+                analysis,
+                unified_profile,
+            )
         )
 
         prompt = self._build_prompt(
             evidence_packet,
         )
 
+        print(
+            f"\nDEBUG GEMINI PROMPT LENGTH: "
+            f"{len(prompt)} characters"
+        )
         return self.gemini.generate_structured(
             prompt,
             LinkedInRating,
         )
 
+    # ==================================================
+    # EVIDENCE PACKET
+    # ==================================================
+
     @staticmethod
     def _build_evidence_packet(
         profile: LinkedInProfile,
         analysis: LinkedInAnalysis,
+        unified_profile=None,
     ) -> dict:
-        return {
+
+        packet = {
             "linkedin_profile": {
                 "name": profile.name,
                 "headline": profile.headline,
                 "location": profile.location,
                 "about": profile.about,
+
+                "profile_url": profile.profile_url,
+
+                "public_identifier": (
+                    profile.public_identifier
+                ),
+
+                "followers": profile.followers,
+                "connections": profile.connections,
 
                 "experiences": [
                     {
@@ -64,6 +89,10 @@ class LinkedInRater:
                         "start_date": experience.start_date,
                         "end_date": experience.end_date,
                         "description": experience.description,
+                        "employment_type": (
+                            experience.employment_type
+                        ),
+                        "location": experience.location,
                     }
                     for experience in profile.experiences
                 ],
@@ -72,7 +101,9 @@ class LinkedInRater:
                     {
                         "institution": education.institution,
                         "degree": education.degree,
-                        "field_of_study": education.field_of_study,
+                        "field_of_study": (
+                            education.field_of_study
+                        ),
                         "start_date": education.start_date,
                         "end_date": education.end_date,
                         "description": education.description,
@@ -86,7 +117,9 @@ class LinkedInRater:
                     {
                         "name": certification.name,
                         "issuer": certification.issuer,
-                        "issue_date": certification.issue_date,
+                        "issue_date": (
+                            certification.issue_date
+                        ),
                         "expiration_date": (
                             certification.expiration_date
                         ),
@@ -121,7 +154,9 @@ class LinkedInRater:
                     {
                         "name": organization.name,
                         "role": organization.role,
-                        "description": organization.description,
+                        "description": (
+                            organization.description
+                        ),
                     }
                     for organization in profile.organizations
                 ],
@@ -158,14 +193,20 @@ class LinkedInRater:
                     }
                     for volunteer in profile.volunteering
                 ],
+
+                "featured_links": profile.links,
             },
 
             "linkedin_analysis": {
                 "name": analysis.name,
                 "headline": analysis.headline,
                 "location": analysis.location,
-                "current_title": analysis.current_title,
-                "current_company": analysis.current_company,
+                "current_title": (
+                    analysis.current_title
+                ),
+                "current_company": (
+                    analysis.current_company
+                ),
 
                 "experience_count": (
                     analysis.experience_count
@@ -205,10 +246,168 @@ class LinkedInRater:
             },
         }
 
+        # ==================================================
+        # CROSS-SOURCE CAREEROS EVIDENCE
+        # ==================================================
+
+        if unified_profile is None:
+
+            packet["unified_careeros_evidence"] = {
+                "available": False,
+                "note": (
+                    "Unified cross-source evidence "
+                    "was not provided."
+                ),
+            }
+
+            return packet
+
+        packet[
+            "unified_careeros_evidence"
+        ] = {
+
+            "available": True,
+
+            "source_status": (
+                unified_profile.source_status
+            ),
+
+            "skills": (
+                unified_profile.skills
+            ),
+
+            "career_domains": (
+                unified_profile.career_domains
+            ),
+
+            "skill_evidence": [
+                {
+                    "skill": item.skill,
+
+                    "resume_claimed": (
+                        item.resume_claimed
+                    ),
+
+                    "linkedin_claimed": (
+                        item.linkedin_claimed
+                    ),
+
+                    "github_demonstrated": (
+                        item.github_demonstrated
+                    ),
+
+                    "leetcode_demonstrated": (
+                        item.leetcode_demonstrated
+                    ),
+
+                    "supporting_sources": (
+                        item.supporting_sources
+                    ),
+
+                    "missing_supporting_sources": (
+                        item.missing_supporting_sources
+                    ),
+
+                    "status": item.status,
+
+                    "evidence": [
+                        {
+                            "source": evidence.source,
+                            "evidence_type": (
+                                evidence.evidence_type
+                            ),
+                            "value": evidence.value,
+                            "strength": evidence.strength,
+                            "details": evidence.details,
+                        }
+                        for evidence
+                        in item.evidence
+                    ],
+                }
+                for item
+                in unified_profile.skill_evidence
+            ],
+
+            "project_evidence": [
+                {
+                    "name": item.name,
+
+                    "resume_present": (
+                        item.resume_present
+                    ),
+
+                    "linkedin_present": (
+                        item.linkedin_present
+                    ),
+
+                    "github_present": (
+                        item.github_present
+                    ),
+
+                    "github_repository": (
+                        item.github_repository
+                    ),
+
+                    "status": item.status,
+
+                    "finding": item.finding,
+
+                    "evidence": [
+                        {
+                            "source": evidence.source,
+                            "evidence_type": (
+                                evidence.evidence_type
+                            ),
+                            "value": evidence.value,
+                            "strength": evidence.strength,
+                            "details": evidence.details,
+                        }
+                        for evidence
+                        in item.evidence
+                    ],
+                }
+                for item
+                in unified_profile.project_evidence
+            ],
+
+            "cross_source_findings": [
+                {
+                    "finding_type": finding.finding_type,
+                    "subject": finding.subject,
+                    "severity": finding.severity,
+                    "message": finding.message,
+                    "sources": finding.sources,
+
+                    "evidence": [
+                        {
+                            "source": evidence.source,
+                            "evidence_type": (
+                                evidence.evidence_type
+                            ),
+                            "value": evidence.value,
+                            "strength": evidence.strength,
+                            "details": evidence.details,
+                        }
+                        for evidence
+                        in finding.evidence
+                    ],
+                }
+                for finding
+                in unified_profile.findings
+            ],
+        }
+
+        return packet
+
+    # ==================================================
+    # GEMINI PROMPT
+    # ==================================================
+
     @staticmethod
     def _build_prompt(
         evidence_packet: dict,
     ) -> str:
+
         evidence_json = json.dumps(
             evidence_packet,
             indent=2,
@@ -218,52 +417,89 @@ class LinkedInRater:
         return f"""
 You are CareerOS LinkedIn Intelligence.
 
-Your job is to evaluate the quality of a candidate's
-LinkedIn profile and provide precise, actionable
-recommendations.
+You are NOT a generic LinkedIn profile grader.
 
-This is NOT a generic LinkedIn checklist.
+Your job is to determine how effectively the candidate's
+LinkedIn profile represents their actual career evidence
+and then provide precise, actionable improvements.
 
-You must reason about:
+CareerOS has already performed deterministic evidence
+matching across:
 
-- profile quality
-- professional positioning
-- completeness
-- clarity
-- technical/career direction
-- project visibility
-- skill visibility
-- experience quality
-- credibility
-- career narrative
+- Resume
+- LinkedIn
+- GitHub
+- LeetCode
 
-IMPORTANT:
+You must use that evidence.
 
-Never fabricate candidate information.
+==================================================
+CORE RULE
+==================================================
 
-Never assume that missing LinkedIn information means
-the candidate does not have that skill, project,
-experience, or achievement.
+CareerOS evidence is authoritative for cross-source facts.
 
-For example:
+Do NOT invent evidence.
 
-If LinkedIn does not list Python, you must NOT say:
+Do NOT infer that a candidate lacks a skill, project,
+experience, achievement, or technology simply because it
+is absent from LinkedIn.
 
-"The candidate does not know Python."
+A missing LinkedIn item means:
 
-Instead say:
+"Not represented in the available LinkedIn data."
 
-"Python is not represented in the available LinkedIn
-data."
+It does NOT mean:
 
-If information is unavailable, explicitly identify it
-as unavailable.
+"The candidate does not have it."
+
+==================================================
+IMPORTANT DISTINCTION
+==================================================
+
+There are three different situations:
+
+1. LINKEDIN MISSING
+
+Example:
+
+Python:
+Resume ✓
+LinkedIn ✗
+GitHub ✓
+LeetCode ✓
+
+Correct interpretation:
+
+"Python is not represented on LinkedIn despite being
+strongly supported elsewhere."
+
+2. PROVIDER UNAVAILABLE
+
+If the acquisition provider did not return a section,
+do NOT call the section empty.
+
+Example:
+
+Projects:
+provider did not return project data
+
+Correct:
+
+"Projects cannot be fully evaluated because project
+data was unavailable from the acquisition provider."
+
+3. ACTUAL LINKEDIN WEAKNESS
+
+If the section is available and contains weak,
+incomplete, vague, or poorly presented information,
+you may identify that as a profile weakness.
 
 ==================================================
 SCORING
 ==================================================
 
-Score these sections independently from 0 to 100:
+Score independently from 0 to 100:
 
 - headline
 - about
@@ -274,13 +510,19 @@ Score these sections independently from 0 to 100:
 - certifications
 - completeness
 
-The overall score must reflect the quality of the
-AVAILABLE LinkedIn profile.
+The score measures LinkedIn PROFILE QUALITY.
 
-Do not invent missing information to increase the score.
+Do NOT reduce a score simply because another source
+contains information that LinkedIn does not.
 
-Do not automatically give a high score simply because
-a section exists.
+Instead, identify cross-source omissions as
+recommendations.
+
+For example:
+
+A project missing from LinkedIn should not automatically
+make the Projects score 0 if project acquisition itself
+is unavailable.
 
 ==================================================
 HEADLINE
@@ -288,12 +530,15 @@ HEADLINE
 
 Evaluate:
 
-- clarity
-- specificity
 - professional identity
-- career direction
-- relevance
+- clarity
+- target direction
+- specificity
 - differentiation
+- unnecessary keyword stuffing
+
+If the headline is a list of technologies, explain
+how to turn it into a professional positioning statement.
 
 ==================================================
 ABOUT
@@ -301,61 +546,71 @@ ABOUT
 
 Evaluate:
 
-- professional identity
-- career direction
-- what the candidate does
+- identity
+- technical direction
 - what the candidate builds
 - evidence
 - specificity
 - readability
+- career goal
+
+Use verified cross-source evidence when recommending
+what should be emphasized.
 
 ==================================================
 EXPERIENCE
 ==================================================
 
-Evaluate:
+Evaluate only the experience data actually available.
 
-- role clarity
-- company clarity
-- descriptions
-- responsibilities
-- impact
-- technical relevance
-- progression
+Never fabricate responsibilities, achievements,
+companies, metrics, or roles.
 
-Do not invent achievements or metrics.
+If experience data is unavailable from the provider,
+state that explicitly.
 
 ==================================================
 PROJECTS
 ==================================================
 
-Evaluate:
+Use BOTH:
 
-- presence
-- descriptions
-- relevance
-- technical depth
-- links
-- credibility
+1. LinkedIn project data
+2. CareerOS project evidence
 
-If projects are absent from LinkedIn, say that
-LinkedIn project evidence is missing.
+If GitHub/Resume evidence identifies a project that is
+missing from LinkedIn, this is a HIGH-VALUE recommendation.
 
-Do not say the candidate has no projects.
+Example:
+
+"CareerOS found CareerOS on GitHub and Resume evidence,
+but it is not represented in LinkedIn project evidence.
+Consider adding it to LinkedIn Projects."
+
+Do not claim the candidate has no projects.
 
 ==================================================
 SKILLS
 ==================================================
 
-Evaluate:
+Use CareerOS skill evidence.
 
-- relevance
-- breadth
-- career alignment
-- representation
+Pay special attention to:
 
-Missing skills are LinkedIn representation gaps,
-not proof that the candidate lacks those skills.
+- strongly_supported
+- demonstrated
+- claimed_only
+- unknown
+
+If a skill is strongly supported by Resume + GitHub +
+LeetCode but missing from LinkedIn, recommend adding it.
+
+Example:
+
+"Python is strongly supported across CareerOS evidence
+but is not represented on LinkedIn."
+
+Do NOT call such a skill unsupported.
 
 ==================================================
 EDUCATION
@@ -367,7 +622,10 @@ Evaluate:
 - degree
 - field
 - dates
+- grades
 - completeness
+
+Flag actual inconsistencies when supported by the data.
 
 ==================================================
 CERTIFICATIONS
@@ -377,90 +635,106 @@ Evaluate:
 
 - relevance
 - issuer
-- credential information
-- completeness
+- credential
+- dates
+- whether the credential information is complete
 
 ==================================================
-RECOMMENDATIONS
+CROSS-SOURCE INTELLIGENCE
 ==================================================
 
-Recommendations must be:
+This is the most important differentiator of CareerOS.
 
-- specific
-- actionable
-- prioritized
-- evidence-based
+Prioritize recommendations where:
 
-Avoid generic advice.
+- strong evidence exists outside LinkedIn
+- LinkedIn does not represent that evidence
+- the missing representation materially affects
+  professional positioning
 
-Bad:
+Examples:
+
+- strong GitHub project missing from LinkedIn
+- demonstrated technology missing from LinkedIn skills
+- strong technical direction not reflected in headline
+- Resume achievement not represented in About
+- LinkedIn claim lacking supporting evidence
+
+Use the exact evidence supplied.
+
+==================================================
+RECOMMENDATION QUALITY
+==================================================
+
+Every recommendation should answer:
+
+1. WHAT should change?
+2. WHY does it matter?
+3. WHAT evidence supports the recommendation?
+
+Avoid generic recommendations such as:
 
 "Improve your profile."
 
-Good:
+Prefer:
 
-"Add the strongest demonstrated project to LinkedIn
-Projects because it is present in other CareerOS
-evidence but missing from the LinkedIn profile."
+"Add CareerOS to LinkedIn Projects because it is
+supported by GitHub and Resume evidence but is currently
+not represented in LinkedIn."
 
 ==================================================
 SUGGESTED CONTENT
 ==================================================
 
-Suggested content may ONLY use information explicitly
-supported by the provided evidence.
+Generated content MUST ONLY use verified candidate
+information present in:
+
+- LinkedIn
+- Resume evidence
+- GitHub evidence
+- LeetCode evidence
 
 Never invent:
 
 - projects
 - technologies
-- achievements
 - metrics
-- responsibilities
+- achievements
 - companies
+- responsibilities
 - certifications
 
-If there is insufficient evidence, return an empty
-suggested_content list.
+If there is insufficient evidence, return no suggested
+content.
 
 ==================================================
 DATA QUALITY
 ==================================================
 
-Clearly distinguish:
+Distinguish:
 
-1. Missing LinkedIn information.
-2. Unavailable acquired data.
-3. Actual weakness in the profile.
+- missing from LinkedIn
+- unavailable from provider
+- genuinely weak LinkedIn content
 
-For example:
-
-Correct:
-
-"Projects cannot be fully evaluated because project
-data is unavailable in the acquired LinkedIn profile."
-
-Incorrect:
-
-"The candidate has no projects."
+Never collapse those into one category.
 
 ==================================================
 OUTPUT
 ==================================================
 
-Return ONLY data compatible with the LinkedInRating
-schema.
+Return ONLY data compatible with LinkedInRating.
 
-Keep recommendations concise and useful.
+Keep recommendations concise.
 
 Prioritize high-impact improvements.
 
 ==================================================
-AVAILABLE CAREEROS EVIDENCE
+CAREEROS EVIDENCE
 ==================================================
 
 {evidence_json}
 """
 
-
+    
 linkedin_rater = LinkedInRater()

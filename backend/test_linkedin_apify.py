@@ -1,8 +1,21 @@
 from app.integrations.linkedin.apify_client import (
     apify_linkedin_client,
 )
+
 from app.integrations.linkedin.apify_adapter import (
     apify_linkedin_adapter,
+)
+
+from app.services.linkedin.linkedin_service import (
+    linkedin_service,
+)
+
+from app.services.linkedin.linkedin_rater import (
+    linkedin_rater,
+)
+
+from app.services.unified.unified_service import (
+    unified_service,
 )
 
 
@@ -15,10 +28,15 @@ LINKEDIN_URL = (
 def main():
 
     print("=" * 70)
-    print("CAREEROS LINKEDIN ACQUISITION PIPELINE")
+    print("CAREEROS REAL LINKEDIN INTELLIGENCE PIPELINE")
     print("=" * 70)
 
+    # ==================================================
+    # 1. ACQUISITION
+    # ==================================================
+
     print("\n1. Acquiring LinkedIn profile...")
+    print(f"URL: {LINKEDIN_URL}")
 
     raw_profile = (
         apify_linkedin_client.fetch_profile(
@@ -30,7 +48,13 @@ def main():
         "Acquisition successful."
     )
 
-    print("\n2. Normalizing provider data...")
+    # ==================================================
+    # 2. NORMALIZATION
+    # ==================================================
+
+    print(
+        "\n2. Normalizing provider data..."
+    )
 
     profile, metadata = (
         apify_linkedin_adapter.parse(
@@ -42,7 +66,31 @@ def main():
         "Canonical parsing successful."
     )
 
-    print("\n3. CANONICAL PROFILE")
+    # ==================================================
+    # 3. LINKEDIN ANALYSIS
+    # ==================================================
+
+    print(
+        "\n3. Running LinkedIn analysis..."
+    )
+
+    analysis = (
+        linkedin_service.analyze(
+            profile
+        )
+    )
+
+    print(
+        "LinkedIn analysis successful."
+    )
+
+    # ==================================================
+    # 4. PROFILE SUMMARY
+    # ==================================================
+
+    print(
+        "\n4. LINKEDIN PROFILE"
+    )
     print("-" * 70)
 
     print(
@@ -60,21 +108,6 @@ def main():
     print(
         f"About length: "
         f"{len(profile.about or '')}"
-    )
-
-    print(
-        f"Profile URL: "
-        f"{profile.profile_url}"
-    )
-
-    print(
-        f"Followers: "
-        f"{profile.followers}"
-    )
-
-    print(
-        f"Connections: "
-        f"{profile.connections}"
     )
 
     print(
@@ -107,112 +140,299 @@ def main():
         f"{len(profile.links)}"
     )
 
-    print("\nSKILLS")
+    # ==================================================
+    # 5. UNIFIED EVIDENCE
+    # ==================================================
+
+    print(
+        "\n5. BUILDING UNIFIED CAREEROS EVIDENCE..."
+    )
+
+    print(
+        "NOTE: This test currently has only "
+        "LinkedIn acquisition data available."
+    )
+
+    unified_profile = (
+        unified_service.build_profile(
+            linkedin_profile=profile,
+            linkedin_analysis=analysis,
+        )
+    )
+
+    print(
+        "Unified evidence built successfully."
+    )
+
+    print(
+        f"Unified skills: "
+        f"{len(unified_profile.skills)}"
+    )
+
+    print(
+        f"Skill evidence: "
+        f"{len(unified_profile.skill_evidence)}"
+    )
+
+    print(
+        f"Project evidence: "
+        f"{len(unified_profile.project_evidence)}"
+    )
+
+    print(
+        f"Cross-source findings: "
+        f"{len(unified_profile.findings)}"
+    )
+
+    # ==================================================
+    # 6. GEMINI LINKEDIN INTELLIGENCE
+    # ==================================================
+
+    print(
+        "\n6. Running Gemini LinkedIn Intelligence..."
+    )
+
+    rating = (
+        linkedin_rater.rate(
+            profile=profile,
+            analysis=analysis,
+            unified_profile=unified_profile,
+        )
+    )
+
+    print(
+        "Gemini rating successful."
+    )
+
+    # ==================================================
+    # 7. SCORE
+    # ==================================================
+
+    print(
+        "\n" + "=" * 70
+    )
+
+    print(
+        "LINKEDIN PROFILE SCORE"
+    )
+
+    print(
+        "=" * 70
+    )
+
+    print(
+        f"Overall: "
+        f"{rating.overall_score}/100"
+    )
+
+    # ==================================================
+    # 8. SECTION SCORES
+    # ==================================================
+
+    print(
+        "\nSECTION SCORES"
+    )
     print("-" * 70)
 
-    for skill in profile.skills:
-        print(
-            f"- {skill}"
-        )
+    print(
+        f"Headline: "
+        f"{rating.headline.score}/100"
+    )
 
-    print("\nEDUCATION")
+    print(
+        f"About: "
+        f"{rating.about.score}/100"
+    )
+
+    print(
+        f"Experience: "
+        f"{rating.experience.score}/100"
+    )
+
+    print(
+        f"Projects: "
+        f"{rating.projects.score}/100"
+    )
+
+    print(
+        f"Skills: "
+        f"{rating.skills.score}/100"
+    )
+
+    print(
+        f"Education: "
+        f"{rating.education.score}/100"
+    )
+
+    print(
+        f"Certifications: "
+        f"{rating.certifications.score}/100"
+    )
+
+    print(
+        f"Completeness: "
+        f"{rating.completeness.score}/100"
+    )
+    # ==================================================
+    # 9. STRENGTHS
+    # ==================================================
+
+    print(
+        "\nSTRENGTHS"
+    )
     print("-" * 70)
 
-    for education in profile.education:
+    for strength in rating.strengths:
 
         print(
-            f"- {education.institution}"
+            f"- {strength}"
         )
 
-        print(
-            f"  Degree: "
-            f"{education.degree}"
-        )
+    # ==================================================
+    # 10. ISSUES
+    # ==================================================
 
-        print(
-            f"  Field: "
-            f"{education.field_of_study}"
-        )
-
-        print(
-            f"  Start: "
-            f"{education.start_date}"
-        )
-
-        print(
-            f"  End: "
-            f"{education.end_date}"
-        )
-
-        print(
-            f"  Description: "
-            f"{education.description}"
-        )
-
-    print("\nCERTIFICATIONS")
+    print(
+        "\nISSUES"
+    )
     print("-" * 70)
 
-    for certification in (
-        profile.certifications
+    for issue in rating.issues:
+
+        print(
+            f"- {issue}"
+        )
+
+    # ==================================================
+    # 11. RECOMMENDATIONS
+    # ==================================================
+
+    print(
+        "\nRECOMMENDATIONS"
+    )
+    print("-" * 70)
+
+    for recommendation in (
+        rating.recommendations
     ):
 
         print(
-            f"- {certification.name}"
+            f"\n[{recommendation.priority}] "
+            f"{recommendation.section}"
         )
 
         print(
-            f"  Issuer: "
-            f"{certification.issuer}"
+            f"Recommendation: "
+            f"{recommendation.recommendation}"
         )
 
         print(
-            f"  Credential: "
-            f"{certification.credential_url}"
+            f"Reason: "
+            f"{recommendation.reason}"
         )
 
-    print("\nFEATURED LINKS")
-    print("-" * 70)
+        if recommendation.evidence:
 
-    for link in profile.links:
-        print(
-            f"- {link}"
-        )
-
-    print("\n4. ACQUISITION AVAILABILITY")
-    print("-" * 70)
-
-    print(
-        f"Provider: "
-        f"{metadata.provider}"
-    )
-
-    for (
-        section,
-        availability,
-    ) in metadata.sections.items():
-
-        state = (
-            "AVAILABLE"
-            if availability.available
-            else "UNAVAILABLE"
-        )
-
-        print(
-            f"- {section}: "
-            f"{state} "
-            f"({availability.item_count} items)"
-        )
-
-        if availability.note:
             print(
-                f"  {availability.note}"
+                "Evidence:"
             )
 
-    print("\n" + "=" * 70)
+            for evidence in (
+                recommendation.evidence
+            ):
+
+                print(
+                    f"  - {evidence}"
+                )
+
+    # ==================================================
+    # 12. SUGGESTED CONTENT
+    # ==================================================
+
     print(
-        "LINKEDIN ACQUISITION PIPELINE COMPLETE"
+        "\nSUGGESTED CONTENT"
     )
-    print("=" * 70)
+    print("-" * 70)
+
+    for content in (
+        rating.suggested_content
+    ):
+
+        print(
+            f"\nSection: "
+            f"{content.section}"
+        )
+
+        print(
+            f"Content: "
+            f"{content.content}"
+        )
+
+        if content.evidence_basis:
+
+            print(
+                "Evidence basis:"
+            )
+
+            for evidence in (
+                content.evidence_basis
+            ):
+
+                print(
+                    f"  - {evidence}"
+                )
+
+    # ==================================================
+    # 13. DATA QUALITY
+    # ==================================================
+
+    print(
+        "\nDATA QUALITY"
+    )
+    print("-" * 70)
+
+    print(
+        f"Profile data available: "
+        f"{rating.profile_data_available}"
+    )
+
+    print(
+        f"Completeness: "
+        f"{rating.data_completeness}/100"
+    )
+
+    if rating.data_quality_note:
+
+        print(
+            f"Note: "
+            f"{rating.data_quality_note}"
+        )
+
+    if rating.missing_sections:
+
+        print(
+            "Unavailable/missing sections:"
+        )
+
+        for section in (
+            rating.missing_sections
+        ):
+
+            print(
+                f"  - {section}"
+            )
+
+    print(
+        "\n" + "=" * 70
+    )
+
+    print(
+        "REAL LINKEDIN INTELLIGENCE COMPLETE"
+    )
+
+    print(
+        "=" * 70
+    )
 
 
 if __name__ == "__main__":
