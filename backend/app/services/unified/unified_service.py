@@ -88,11 +88,20 @@ class UnifiedService:
             )
         )
 
-        findings = (
-            self._build_cross_source_findings(
-                skill_evidence=skill_evidence,
-                project_evidence=project_evidence,
-            )
+        findings = self._build_cross_source_findings(
+            skill_evidence=skill_evidence,
+            project_evidence=project_evidence,
+            github_available=(
+                github_profile is not None
+                and github_analysis is not None
+            ),
+            leetcode_available=(
+                leetcode_analysis is not None
+            ),
+            linkedin_available=(
+                linkedin_profile is not None
+                and linkedin_analysis is not None
+            ),
         )
 
         name = self._resolve_name(
@@ -144,9 +153,13 @@ class UnifiedService:
             findings=findings,
             source_status={
                 "resume": resume is not None,
-                "github": github_profile is not None,
+                "github": (
+                    github_profile is not None
+                    and github_analysis is not None
+                ),
                 "linkedin": (
-                    linkedin_analysis is not None
+                    linkedin_profile is not None
+                    and linkedin_analysis is not None
                 ),
                 "leetcode": (
                     leetcode_analysis is not None
@@ -178,94 +191,58 @@ class UnifiedService:
 
             "react.js": "react",
             "reactjs": "react",
-            "react": "react",
 
-            "node.js": "node.js",
-            "nodejs": "node.js",
+            "node.js": "node",
+            "nodejs": "node",
 
-            "fastapi": "fastapi",
-            "fast api": "fastapi",
+            "scikit learn": "scikit-learn",
+            "scikit_learn": "scikit-learn",
+            "sklearn": "scikit-learn",
+            "scikit-learn": "scikit-learn",
 
-            "spring boot": "spring boot",
+            "machine-learning": "machine learning",
+            "machine_learning": "machine learning",
 
-            "machine learning": (
-                "machine learning"
-            ),
-            "ml": "machine learning",
-
-            "deep learning": "deep learning",
+            "deep-learning": "deep learning",
+            "deep_learning": "deep learning",
 
             "artificial intelligence": (
-                "artificial intelligence"
+                "artificial intelligence (ai)"
             ),
-            "ai": "artificial intelligence",
-
-            "scikit-learn": "scikit-learn",
-            "scikit learn": "scikit-learn",
-
-            "postgres": "postgresql",
-            "postgresql": "postgresql",
-
-            "mysql": "mysql",
-            "mongodb": "mongodb",
-
-            "docker": "docker",
-            "kubernetes": "kubernetes",
-
-            "aws": "aws",
-
-            "gcp": "google cloud",
-            "google cloud": "google cloud",
-
-            "azure": "azure",
-
-            "git": "git",
-            "github": "github",
-
-            "rest api": "rest api",
-            "rest apis": "rest api",
-
-            "sql": "sql",
+            "artificial intelligence (ai)": (
+                "artificial intelligence (ai)"
+            ),
         }
 
-        cleaned = (
-            " ".join(
-                skill.strip().split()
-            )
+        value = (
+            skill
+            .strip()
             .lower()
         )
 
         return aliases.get(
-            cleaned,
-            cleaned,
+            value,
+            value,
         )
 
-    @classmethod
     def _normalize_skills(
-        cls,
+        self,
         skills: list[str],
     ) -> list[str]:
 
         normalized = []
-        seen = set()
 
         for skill in skills:
 
             if not skill:
                 continue
 
-            value = cls._normalize_skill(
+            value = self._normalize_skill(
                 skill
             )
 
-            if not value:
-                continue
-
-            if value in seen:
-                continue
-
-            seen.add(value)
-            normalized.append(value)
+            if value and value not in normalized:
+                normalized.append(value)
 
         return normalized
 
@@ -275,114 +252,136 @@ class UnifiedService:
     ) -> list[str]:
 
         result = []
-        seen = set()
 
-        for skills in skill_lists:
+        for skill_list in skill_lists:
 
-            for skill in skills:
+            for skill in skill_list:
 
-                key = skill.lower()
+                if skill not in result:
+                    result.append(skill)
 
-                if key in seen:
-                    continue
-
-                seen.add(key)
-                result.append(skill)
-
-        return sorted(
-            result
-        )
+        return result
 
     # ==================================================
     # GITHUB SKILLS
     # ==================================================
 
-    @classmethod
+    @staticmethod
     def _extract_github_skills(
-        cls,
         analysis: GitHubAIAnalysis | None,
     ) -> list[str]:
 
-        if not analysis:
+        if analysis is None:
             return []
 
         skills = []
 
-        for item in (
-            analysis.demonstrated_skills
+        if hasattr(
+            analysis,
+            "skills",
         ):
 
-            if item.skill:
-                skills.append(
-                    item.skill
+            for skill in analysis.skills:
+
+                if isinstance(
+                    skill,
+                    str,
+                ):
+                    skills.append(skill)
+
+                elif isinstance(
+                    skill,
+                    dict,
+                ):
+
+                    value = (
+                        skill.get("skill")
+                        or skill.get("name")
+                    )
+
+                    if value:
+                        skills.append(value)
+
+        if hasattr(
+            analysis,
+            "projects",
+        ):
+
+            for project in analysis.projects:
+
+                technologies = getattr(
+                    project,
+                    "technologies",
+                    [],
                 )
 
-        skills.extend(
-            analysis.technical_strengths
-        )
+                for technology in technologies:
 
-        for project in analysis.projects:
+                    if technology:
+                        skills.append(
+                            technology
+                        )
 
-            if not project.meaningful_project:
-                continue
-
-            skills.extend(
-                project.technologies
-            )
-
-        return cls._normalize_skills(
-            skills
-        )
+        return skills
 
     # ==================================================
     # LEETCODE SKILLS
     # ==================================================
 
-    @classmethod
+    @staticmethod
     def _extract_leetcode_skills(
-        cls,
         analysis: LeetCodeAnalysis | None,
     ) -> list[str]:
 
-        if not analysis:
+        if analysis is None:
             return []
 
         skills = []
 
-        skills.extend(
-            analysis.languages
-        )
+        if hasattr(
+            analysis,
+            "strong_areas",
+        ):
 
-        skills.extend(
-            analysis.strongest_skills
-        )
+            for area in analysis.strong_areas:
 
-        skills.extend(
-            analysis.strong_areas
-        )
+                if area:
+                    skills.append(area)
 
-        skills.extend(
-            analysis.developing_areas
-        )
+        if hasattr(
+            analysis,
+            "dsa_coverage",
+        ):
 
-        return cls._normalize_skills(
-            skills
-        )
+            coverage = (
+                analysis.dsa_coverage
+            )
+
+            if isinstance(
+                coverage,
+                dict,
+            ):
+
+                for area in coverage.keys():
+
+                    if area:
+                        skills.append(area)
+
+        return skills
 
     # ==================================================
     # SKILL EVIDENCE
     # ==================================================
 
-    @classmethod
     def _build_skill_evidence(
-        cls,
+        self,
         resume_skills: list[str],
         linkedin_skills: list[str],
         github_skills: list[str],
         leetcode_skills: list[str],
     ) -> list[SkillEvidence]:
 
-        all_skills = cls._merge_unique(
+        all_skills = self._merge_unique(
             resume_skills,
             linkedin_skills,
             github_skills,
@@ -393,133 +392,85 @@ class UnifiedService:
 
         for skill in all_skills:
 
-            resume = skill in resume_skills
-            linkedin = skill in linkedin_skills
-            github = skill in github_skills
-            leetcode = skill in leetcode_skills
+            resume_claimed = (
+                skill in resume_skills
+            )
+
+            linkedin_claimed = (
+                skill in linkedin_skills
+            )
+
+            github_demonstrated = (
+                skill in github_skills
+            )
+
+            leetcode_demonstrated = (
+                skill in leetcode_skills
+            )
 
             supporting_sources = []
 
-            if resume:
+            if resume_claimed:
                 supporting_sources.append(
                     "resume"
                 )
 
-            if linkedin:
+            if linkedin_claimed:
                 supporting_sources.append(
                     "linkedin"
                 )
 
-            if github:
+            if github_demonstrated:
                 supporting_sources.append(
                     "github"
                 )
 
-            if leetcode:
+            if leetcode_demonstrated:
                 supporting_sources.append(
                     "leetcode"
                 )
-
-            demonstrated = (
-                github
-                or leetcode
-            )
-
-            claimed = (
-                resume
-                or linkedin
-            )
-
-            if (
-                demonstrated
-                and len(supporting_sources) >= 3
-            ):
-
-                status = (
-                    "strongly_supported"
-                )
-
-            elif demonstrated:
-
-                status = "demonstrated"
-
-            elif claimed:
-
-                status = "claimed_only"
-
-            else:
-
-                status = "unknown"
 
             missing_sources = []
 
-            if claimed and not github:
+            if not github_demonstrated:
                 missing_sources.append(
                     "github"
                 )
 
-            if claimed and not leetcode:
+            if not leetcode_demonstrated:
                 missing_sources.append(
                     "leetcode"
                 )
 
-            items = []
+            if (
+                github_demonstrated
+                or leetcode_demonstrated
+            ):
 
-            if resume:
+                status = "demonstrated"
 
-                items.append(
-                    EvidenceItem(
-                        source="resume",
-                        evidence_type="claim",
-                        value=skill,
-                        strength="claim",
-                    )
-                )
+            elif (
+                resume_claimed
+                or linkedin_claimed
+            ):
 
-            if linkedin:
+                status = "claimed"
 
-                items.append(
-                    EvidenceItem(
-                        source="linkedin",
-                        evidence_type="claim",
-                        value=skill,
-                        strength="claim",
-                    )
-                )
+            else:
 
-            if github:
-
-                items.append(
-                    EvidenceItem(
-                        source="github",
-                        evidence_type=(
-                            "demonstration"
-                        ),
-                        value=skill,
-                        strength="demonstrated",
-                    )
-                )
-
-            if leetcode:
-
-                items.append(
-                    EvidenceItem(
-                        source="leetcode",
-                        evidence_type=(
-                            "demonstration"
-                        ),
-                        value=skill,
-                        strength="demonstrated",
-                    )
-                )
+                status = "evidence_only"
 
             evidence.append(
                 SkillEvidence(
                     skill=skill,
-                    resume_claimed=resume,
-                    linkedin_claimed=linkedin,
-                    github_demonstrated=github,
-                    leetcode_demonstrated=leetcode,
+                    resume_claimed=resume_claimed,
+                    linkedin_claimed=linkedin_claimed,
+                    github_demonstrated=(
+                        github_demonstrated
+                    ),
+                    leetcode_demonstrated=(
+                        leetcode_demonstrated
+                    ),
                     supporting_sources=(
                         supporting_sources
                     ),
@@ -527,7 +478,6 @@ class UnifiedService:
                         missing_sources
                     ),
                     status=status,
-                    evidence=items,
                 )
             )
 
@@ -537,9 +487,8 @@ class UnifiedService:
     # PROJECT EVIDENCE
     # ==================================================
 
-    @classmethod
     def _build_project_evidence(
-        cls,
+        self,
         resume: ResumeData | None,
         github_profile: GitHubProfile | None,
         github_analysis: GitHubAIAnalysis | None,
@@ -548,74 +497,94 @@ class UnifiedService:
 
         projects = {}
 
-        # ------------------------------
-        # GitHub
-        # ------------------------------
+        # ------------------------------------------
+        # GitHub projects
+        # ------------------------------------------
 
-        if github_analysis:
-
-            for project in (
-                github_analysis.projects
-            ):
-
-                if not project.meaningful_project:
-                    continue
-
-                name = cls._repository_name(
-                    project.repository
-                )
-
-                key = cls._project_key(
-                    name
-                )
-
-                projects.setdefault(
-                    key,
-                    {
-                        "name": name,
-                        "github": False,
-                        "linkedin": False,
-                        "resume": False,
-                        "repository": None,
-                    },
-                )
-
-                projects[key]["github"] = True
-
-                projects[key][
-                    "repository"
-                ] = project.repository
-
-        elif github_profile:
+        if github_profile:
 
             for repository in (
                 github_profile.repositories
             ):
 
-                key = cls._project_key(
+                name = (
                     repository.name
+                )
+
+                key = self._project_key(
+                    name
+                )
+
+                projects[key] = {
+                    "name": name,
+                    "resume": False,
+                    "github": True,
+                    "linkedin": False,
+                    "evidence": [],
+                }
+
+                projects[key][
+                    "evidence"
+                ].append(
+                    EvidenceItem(
+                        source="github",
+                        evidence_type="repository",
+                        value=(
+                            repository.full_name
+                        ),
+                        strength="demonstrated",
+                    )
+                )
+
+        # ------------------------------------------
+        # Resume projects
+        # ------------------------------------------
+
+        if resume:
+
+            resume_text = (
+                resume.projects
+                or ""
+            )
+
+            if resume_text.strip():
+
+                # Resume project text is preserved
+                # as evidence rather than inventing
+                # project names.
+                key = self._project_key(
+                    "resume_projects"
                 )
 
                 projects.setdefault(
                     key,
                     {
-                        "name": repository.name,
+                        "name": "Resume Projects",
+                        "resume": False,
                         "github": False,
                         "linkedin": False,
-                        "resume": False,
-                        "repository": None,
+                        "evidence": [],
                     },
                 )
 
-                projects[key]["github"] = True
+                projects[key][
+                    "resume"
+                ] = True
 
                 projects[key][
-                    "repository"
-                ] = repository.full_name
+                    "evidence"
+                ].append(
+                    EvidenceItem(
+                        source="resume",
+                        evidence_type="project",
+                        value=resume_text,
+                        strength="claim",
+                    )
+                )
 
-        # ------------------------------
-        # LinkedIn
-        # ------------------------------
+        # ------------------------------------------
+        # LinkedIn projects
+        # ------------------------------------------
 
         if linkedin_profile:
 
@@ -623,155 +592,64 @@ class UnifiedService:
                 linkedin_profile.projects
             ):
 
-                key = cls._project_key(
-                    project.name
+                name = getattr(
+                    project,
+                    "name",
+                    None,
+                )
+
+                if not name:
+                    continue
+
+                key = self._project_key(
+                    name
                 )
 
                 projects.setdefault(
                     key,
                     {
-                        "name": project.name,
+                        "name": name,
+                        "resume": False,
                         "github": False,
                         "linkedin": False,
-                        "resume": False,
-                        "repository": None,
+                        "evidence": [],
                     },
                 )
 
-                projects[key]["linkedin"] = True
+                projects[key][
+                    "linkedin"
+                ] = True
 
-        # ------------------------------
-        # Resume
-        # ------------------------------
-
-        if resume and resume.projects:
-
-            resume_text = (
-                resume.projects.lower()
-            )
-
-            for item in projects.values():
-
-                if (
-                    item["name"].lower()
-                    in resume_text
-                ):
-
-                    item["resume"] = True
-
-        results = []
-
-        for item in projects.values():
-
-            github_present = item[
-                "github"
-            ]
-
-            linkedin_present = item[
-                "linkedin"
-            ]
-
-            resume_present = item[
-                "resume"
-            ]
-
-            if (
-                github_present
-                and not linkedin_present
-            ):
-
-                status = (
-                    "missing_from_linkedin"
-                )
-
-                finding = (
-                    "Project is present on "
-                    "GitHub but is not represented "
-                    "in LinkedIn project evidence."
-                )
-
-            elif (
-                github_present
-                and linkedin_present
-            ):
-
-                status = "cross_source_supported"
-
-                finding = (
-                    "Project is represented "
-                    "on both GitHub and LinkedIn."
-                )
-
-            elif linkedin_present:
-
-                status = "linkedin_only"
-
-                finding = (
-                    "Project is listed on LinkedIn "
-                    "but no matching GitHub project "
-                    "was found."
-                )
-
-            else:
-
-                status = "resume_only"
-
-                finding = None
-
-            evidence = []
-
-            if github_present:
-
-                evidence.append(
-                    EvidenceItem(
-                        source="github",
-                        evidence_type="project",
-                        value=item["name"],
-                        strength="demonstrated",
-                        details=(
-                            item["repository"]
-                        ),
-                    )
-                )
-
-            if linkedin_present:
-
-                evidence.append(
+                projects[key][
+                    "evidence"
+                ].append(
                     EvidenceItem(
                         source="linkedin",
                         evidence_type="project",
-                        value=item["name"],
+                        value=name,
                         strength="claim",
                     )
                 )
 
-            if resume_present:
+        # ------------------------------------------
+        # Convert to schema
+        # ------------------------------------------
 
-                evidence.append(
-                    EvidenceItem(
-                        source="resume",
-                        evidence_type="project",
-                        value=item["name"],
-                        strength="claim",
-                    )
-                )
+        result = []
 
-            results.append(
+        for data in projects.values():
+
+            result.append(
                 ProjectEvidence(
-                    name=item["name"],
-                    resume_present=resume_present,
-                    linkedin_present=linkedin_present,
-                    github_present=github_present,
-                    github_repository=item[
-                        "repository"
-                    ],
-                    status=status,
-                    finding=finding,
-                    evidence=evidence,
+                    name=data["name"],
+                    resume_present=data["resume"],
+                    github_present=data["github"],
+                    linkedin_present=data["linkedin"],
+                    evidence=data["evidence"],
                 )
             )
 
-        return results
+        return result
 
     # ==================================================
     # CROSS-SOURCE FINDINGS
@@ -781,13 +659,16 @@ class UnifiedService:
     def _build_cross_source_findings(
         skill_evidence: list[SkillEvidence],
         project_evidence: list[ProjectEvidence],
+        github_available: bool = False,
+        leetcode_available: bool = False,
+        linkedin_available: bool = False,
     ) -> list[CrossSourceFinding]:
 
         findings = []
 
-        # ------------------------------
-        # Unsupported claims
-        # ------------------------------
+        # ------------------------------------------
+        # Unsupported / unverifiable skill claims
+        # ------------------------------------------
 
         for skill in skill_evidence:
 
@@ -795,14 +676,12 @@ class UnifiedService:
                 skill.resume_claimed
                 or skill.linkedin_claimed
             ):
-
                 continue
 
             if (
                 skill.github_demonstrated
                 or skill.leetcode_demonstrated
             ):
-
                 continue
 
             claim_sources = []
@@ -827,86 +706,121 @@ class UnifiedService:
                 for source in claim_sources
             ]
 
-            findings.append(
-                CrossSourceFinding(
-                    finding_type=(
-                        "unsupported_skill_claim"
-                    ),
-                    subject=skill.skill,
-                    severity="warning",
-                    message=(
-                        f"{skill.skill} is claimed "
-                        "in connected sources, but "
-                        "no supporting evidence was "
-                        "found in GitHub or LeetCode."
-                    ),
-                    sources=claim_sources,
-                    evidence=evidence,
-                )
+            verification_sources_available = (
+                github_available
+                or leetcode_available
             )
 
-        # ------------------------------
+            if not verification_sources_available:
+
+                findings.append(
+                    CrossSourceFinding(
+                        finding_type=(
+                            "skill_verification_unavailable"
+                        ),
+                        subject=skill.skill,
+                        severity="info",
+                        message=(
+                            f"{skill.skill} is claimed "
+                            "in connected sources, but "
+                            "GitHub and LeetCode evidence "
+                            "were unavailable for "
+                            "verification."
+                        ),
+                        sources=claim_sources,
+                        evidence=evidence,
+                    )
+                )
+
+            else:
+
+                findings.append(
+                    CrossSourceFinding(
+                        finding_type=(
+                            "unsupported_skill_claim"
+                        ),
+                        subject=skill.skill,
+                        severity="warning",
+                        message=(
+                            f"{skill.skill} is claimed "
+                            "in connected sources, but "
+                            "no supporting evidence was "
+                            "found in the available "
+                            "verification sources."
+                        ),
+                        sources=claim_sources,
+                        evidence=evidence,
+                    )
+                )
+
+        # ------------------------------------------
         # GitHub project missing LinkedIn
-        # ------------------------------
+        # ------------------------------------------
 
-        for project in project_evidence:
+        if github_available:
 
-            if (
-                project.github_present
-                and not project.linkedin_present
-            ):
+            for project in project_evidence:
 
-                findings.append(
-                    CrossSourceFinding(
-                        finding_type=(
-                            "project_missing_from_linkedin"
-                        ),
-                        subject=project.name,
-                        severity="info",
-                        message=(
-                            f"{project.name} appears "
-                            "as a GitHub project but "
-                            "is not represented in "
-                            "LinkedIn project evidence."
-                        ),
-                        sources=[
-                            "github",
-                            "linkedin",
-                        ],
-                        evidence=project.evidence,
+                if (
+                    project.github_present
+                    and not project.linkedin_present
+                    and linkedin_available
+                ):
+
+                    findings.append(
+                        CrossSourceFinding(
+                            finding_type=(
+                                "project_missing_from_linkedin"
+                            ),
+                            subject=project.name,
+                            severity="info",
+                            message=(
+                                f"{project.name} appears "
+                                "as a GitHub project but "
+                                "is not represented in "
+                                "LinkedIn project evidence."
+                            ),
+                            sources=[
+                                "github",
+                                "linkedin",
+                            ],
+                            evidence=project.evidence,
+                        )
                     )
-                )
 
-        # ------------------------------
+        # ------------------------------------------
         # LinkedIn project without GitHub
-        # ------------------------------
+        # ------------------------------------------
 
-        for project in project_evidence:
+        if linkedin_available:
 
-            if (
-                project.linkedin_present
-                and not project.github_present
-            ):
+            for project in project_evidence:
 
-                findings.append(
-                    CrossSourceFinding(
-                        finding_type=(
-                            "linkedin_project_without_github_evidence"
-                        ),
-                        subject=project.name,
-                        severity="info",
-                        message=(
-                            f"{project.name} is listed "
-                            "on LinkedIn but no matching "
-                            "GitHub project was found."
-                        ),
-                        sources=[
-                            "linkedin",
-                            "github",
-                        ],
-                        evidence=project.evidence,
+                if (
+                    project.linkedin_present
+                    and not project.github_present
+                    and github_available
+                ):
+
+                    findings.append(
+                        CrossSourceFinding(
+                            finding_type=(
+                                "linkedin_project_without_github_evidence"
+                            ),
+                            subject=project.name,
+                            severity="info",
+                            message=(
+                                f"{project.name} is listed "
+                                "on LinkedIn but no matching "
+                                "GitHub project was found."
+                            ),
+                            sources=[
+                                "linkedin",
+                                "github",
+                            ],
+                            evidence=project.evidence,
+                        )
                     )
-                )
 
         return findings
 
