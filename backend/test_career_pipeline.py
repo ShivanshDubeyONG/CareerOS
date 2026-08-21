@@ -7,7 +7,7 @@ from app.services.career.career_analysis_service import (
 
 RESUME_PATH = (
     "uploads/"
-    "19b95751-bd60-4210-9f16-f88589a05b61.pdf"
+    "myresume.pdf"
 )
 
 

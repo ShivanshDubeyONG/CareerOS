@@ -28,6 +28,11 @@ class SkillEvidence(BaseModel):
 
     status: str = "unknown"
 
+    # NEW:
+    # How relevant this skill is to the candidate's
+    # detected career direction.
+    relevance: str = "unknown"
+
     evidence: list[EvidenceItem] = Field(
         default_factory=list
     )
@@ -87,6 +92,17 @@ class UnifiedCandidateProfile(BaseModel):
     current_title: str | None = None
 
     current_company: str | None = None
+
+    # NEW:
+    # Detected primary career direction.
+    primary_career_domain: str | None = None
+
+    # NEW:
+    # Relevance of each connected source to the
+    # candidate's detected career direction.
+    source_relevance: dict[str, str] = Field(
+        default_factory=dict
+    )
 
     skill_evidence: list[SkillEvidence] = Field(
         default_factory=list
