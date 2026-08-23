@@ -27,6 +27,8 @@ from app.schemas.unified_schema import (
     UnifiedCandidateProfile,
 )
 
+import re
+
 
 class UnifiedService:
 
@@ -129,6 +131,9 @@ class UnifiedService:
             self._build_cross_source_findings(
                 skill_evidence=skill_evidence,
                 project_evidence=project_evidence,
+                linkedin_profile=linkedin_profile,
+                linkedin_analysis=linkedin_analysis,
+                leetcode_analysis=leetcode_analysis,
             )
         )
 
@@ -1544,15 +1549,18 @@ class UnifiedService:
 
     @staticmethod
     def _build_cross_source_findings(
-        skill_evidence: list[SkillEvidence],
-        project_evidence: list[ProjectEvidence],
-    ) -> list[CrossSourceFinding]:
+    skill_evidence: list[SkillEvidence],
+    project_evidence: list[ProjectEvidence],
+    linkedin_profile: LinkedInProfile | None = None,
+    linkedin_analysis: LinkedInAnalysis | None = None,
+    leetcode_analysis: LeetCodeAnalysis | None = None,
+    )-> list[CrossSourceFinding]:
 
         findings = []
 
-        # --------------------------------------------------
-        # Unsupported / unverified skill claims
-        # --------------------------------------------------
+        # ==================================================
+        # 1. SKILL CLAIMS WITHOUT RELEVANT EVIDENCE
+        # ==================================================
 
         for skill in skill_evidence:
 
@@ -1560,45 +1568,32 @@ class UnifiedService:
                 skill.resume_claimed
                 or skill.linkedin_claimed
             ):
-
                 continue
 
             if (
                 skill.github_demonstrated
                 or skill.leetcode_demonstrated
             ):
-
                 continue
 
-            # --------------------------------------------------
-            # THIS IS THE IMPORTANT PART:
-            #
-            # If there is no relevant missing evidence,
-            # do NOT generate a finding.
-            #
-            # CSS with no LeetCode evidence therefore
-            # produces nothing here.
-            # --------------------------------------------------
-
-            if not (
-                skill.missing_supporting_sources
-            ):
-
+            if not skill.missing_supporting_sources:
                 continue
 
             claim_sources = []
 
             if skill.resume_claimed:
-
                 claim_sources.append(
                     "resume"
                 )
 
             if skill.linkedin_claimed:
-
                 claim_sources.append(
                     "linkedin"
                 )
+
+            verification_sources = (
+                skill.missing_supporting_sources
+            )
 
             evidence = []
 
@@ -1612,10 +1607,6 @@ class UnifiedService:
                         strength="claim",
                     )
                 )
-
-            verification_sources = (
-                skill.missing_supporting_sources
-            )
 
             findings.append(
                 CrossSourceFinding(
@@ -1642,9 +1633,7 @@ class UnifiedService:
                         )
                         + (
                             "This does not mean the "
-                            "skill is incorrect or that "
-                            "the candidate does not "
-                            "possess it."
+                            "skill is incorrect."
                         )
                     ),
                     sources=(
@@ -1655,9 +1644,271 @@ class UnifiedService:
                 )
             )
 
-        # --------------------------------------------------
-        # GitHub project missing from LinkedIn
-        # --------------------------------------------------
+        # ==================================================
+        # 2. LINKEDIN ↔ LEETCODE SOLVED COUNT
+        # ==================================================
+
+        if (
+            linkedin_analysis is not None
+            and leetcode_analysis is not None
+        ):
+
+            actual_solved = getattr(
+                leetcode_analysis,
+                "total_solved",
+                None,
+            )
+
+            linkedin_text_parts = []
+
+# ==================================================
+# RAW LINKEDIN PROFILE EVIDENCE
+# ==================================================
+
+        if linkedin_profile:
+
+            if linkedin_profile.about:
+
+                linkedin_text_parts.append(
+                    linkedin_profile.about
+                )
+
+            for experience in (
+                linkedin_profile.experiences
+                or []
+            ):
+
+                if experience.description:
+
+                    linkedin_text_parts.append(
+                        experience.description
+                    )
+
+            for project in (
+                linkedin_profile.projects
+                or []
+            ):
+
+                if project.description:
+
+                    linkedin_text_parts.append(
+                        project.description
+                    )
+
+        # ==================================================
+        # LINKEDIN ANALYSIS EVIDENCE
+        # ==================================================
+
+        if linkedin_analysis:
+
+            if linkedin_analysis.about:
+
+                linkedin_text_parts.append(
+                    linkedin_analysis.about
+                )
+
+            for signal in (
+                linkedin_analysis.career_signals
+                or []
+            ):
+
+                if signal.signal:
+
+                    linkedin_text_parts.append(
+                        signal.signal
+                    )
+
+                if signal.evidence:
+
+                    linkedin_text_parts.append(
+                        signal.evidence
+                    )
+
+        # ==================================================
+        # CLAIMED SKILLS
+        # ==================================================
+
+        if linkedin_analysis:
+
+            for skill in (
+                linkedin_analysis.claimed_skills
+                or []
+            ):
+
+                linkedin_text_parts.append(
+                    str(skill)
+                )
+
+        linkedin_text = " ".join(
+            linkedin_text_parts
+        )
+
+            # ----------------------------------------------
+            # Extract numeric LeetCode claims.
+            #
+            # Handles examples such as:
+            #
+            # "100+ LeetCode problems"
+            # "solved 120 problems"
+            # "90 LeetCode questions"
+            # "150+ problems on LeetCode"
+            # ----------------------------------------------
+
+
+        leetcode_claim_pattern = re.compile(
+                        r"(?i)"
+                        r"(?:(\d+)\s*\+?\s*"
+                        r"(?:leetcode\s*)?"
+                        r"(?:problems?|questions?|"
+                        r"questions?\s*solved|"
+                        r"problems?\s*solved))"
+                        r"|"
+                        r"(?:(?:solved|completed)"
+                        r"\s+(\d+)\s*\+?\s*"
+                        r"(?:leetcode\s*)?"
+                        r"(?:problems?|questions?))"
+                        r"|"
+                        r"(?:(?:leetcode)"
+                        r"\s*(?:problems?|questions?)"
+                        r"\s*(?:solved|completed)"
+                        r"\s*(\d+)\s*\+?)"
+                    )
+
+        match = (
+            leetcode_claim_pattern.search(
+                linkedin_text
+            )
+        )
+
+        linkedin_solved = None
+
+        if match:
+
+            groups = match.groups()
+
+            for value in groups:
+
+                if value:
+
+                        try:
+
+                            linkedin_solved = int(
+                                value
+                            )
+
+                            break
+
+                        except (
+                            TypeError,
+                            ValueError,
+                        ):
+
+                            pass
+
+            # ----------------------------------------------
+            # Compare only when BOTH values are known.
+            # ----------------------------------------------
+
+            if (
+                actual_solved is not None
+                and linkedin_solved is not None
+            ):
+
+                try:
+
+                    actual_solved = int(
+                        actual_solved
+                    )
+
+                    linkedin_solved = int(
+                        linkedin_solved
+                    )
+
+                except (
+                    TypeError,
+                    ValueError,
+                ):
+
+                    actual_solved = None
+                    linkedin_solved = None
+
+            if (
+                actual_solved is not None
+                and linkedin_solved is not None
+                and linkedin_solved != actual_solved
+            ):
+
+                difference = (
+                    linkedin_solved
+                    - actual_solved
+                )
+
+                direction = (
+                    "higher"
+                    if difference > 0
+                    else "lower"
+                )
+
+                evidence = [
+                    EvidenceItem(
+                        source="linkedin",
+                        evidence_type=(
+                            "profile_claim"
+                        ),
+                        value=(
+                            f"{linkedin_solved} "
+                            "LeetCode problems"
+                        ),
+                        strength="claim",
+                    ),
+
+                    EvidenceItem(
+                        source="leetcode",
+                        evidence_type=(
+                            "platform_statistic"
+                        ),
+                        value=(
+                            f"{actual_solved} "
+                            "problems solved"
+                        ),
+                        strength="demonstrated",
+                    ),
+                ]
+
+                findings.append(
+                    CrossSourceFinding(
+                        finding_type=(
+                            "leetcode_count_mismatch"
+                        ),
+                        subject=(
+                            "LeetCode problem count"
+                        ),
+                        severity="low",
+                        message=(
+                            f"LinkedIn indicates "
+                            f"{linkedin_solved}+ "
+                            "LeetCode problems, "
+                            f"while the current "
+                            f"LeetCode profile shows "
+                            f"{actual_solved} solved. "
+                            f"The LinkedIn figure is "
+                            f"{direction} than the "
+                            "current platform count. "
+                            "Consider updating the "
+                            "profile if the LinkedIn "
+                            "number is outdated."
+                        ),
+                        sources=[
+                            "linkedin",
+                            "leetcode",
+                        ],
+                        evidence=evidence,
+                    )
+                )
+
+        # ==================================================
+        # 3. GITHUB PROJECT MISSING FROM LINKEDIN
+        # ==================================================
 
         for project in project_evidence:
 
@@ -1687,9 +1938,9 @@ class UnifiedService:
                     )
                 )
 
-        # --------------------------------------------------
-        # LinkedIn project without GitHub
-        # --------------------------------------------------
+        # ==================================================
+        # 4. LINKEDIN PROJECT WITHOUT GITHUB
+        # ==================================================
 
         for project in project_evidence:
 
@@ -1708,7 +1959,11 @@ class UnifiedService:
                         message=(
                             f"{project.name} is listed "
                             "on LinkedIn but no matching "
-                            "GitHub project was found."
+                            "GitHub project was found. "
+                            "This is not necessarily a "
+                            "problem because the project "
+                            "may be private, hosted "
+                            "elsewhere, or not code-based."
                         ),
                         sources=[
                             "linkedin",
@@ -1719,7 +1974,6 @@ class UnifiedService:
                 )
 
         return findings
-
     # ==================================================
     # IDENTITY
     # ==================================================

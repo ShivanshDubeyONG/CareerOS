@@ -4,76 +4,123 @@ import re
 class GitHubAnalyzer:
 
     @staticmethod
+    @staticmethod
     def extract_dependencies(
-        dependency_files: dict[str, str],
+        content: str,
+        filename: str,
     ) -> list[str]:
+
+        if not content:
+            return []
 
         dependencies = set()
 
-        for filename, content in dependency_files.items():
+        filename = filename.lower()
 
-            if not content:
-                continue
+        # ==================================================
+        # requirements.txt
+        # ==================================================
 
-            # requirements.txt
-            if filename == "requirements.txt":
+        if filename.endswith(
+            "requirements.txt"
+        ):
 
-                for line in content.splitlines():
+            for line in content.splitlines():
 
-                    line = line.strip()
+                line = line.strip()
 
-                    if (
-                        not line
-                        or line.startswith("#")
-                    ):
-                        continue
-
-                    match = re.match(
-                        r"^([A-Za-z0-9_.-]+)",
-                        line,
-                    )
-
-                    if match:
-                        dependencies.add(
-                            match.group(1)
-                        )
-
-            # package.json
-            elif filename == "package.json":
-
-                try:
-                    import json
-
-                    data = json.loads(content)
-
-                    for section in [
-                        "dependencies",
-                        "devDependencies",
-                    ]:
-
-                        for dependency in data.get(
-                            section,
-                            {},
-                        ).keys():
-
-                            dependencies.add(
-                                dependency
-                            )
-
-                except Exception:
+                if (
+                    not line
+                    or line.startswith("#")
+                    or line.startswith("-")
+                ):
                     continue
 
-            # pyproject.toml
-            elif filename == "pyproject.toml":
-
-                # Lightweight extraction of common
-                # dependency declarations.
-                matches = re.findall(
-                    r"""["']([A-Za-z0-9_.-]+)(?:[<>=!~^].*)?["']""",
-                    content,
+                match = re.match(
+                    r"^([A-Za-z0-9_.-]+)",
+                    line,
                 )
 
-                for dependency in matches:
+                if match:
+
+                    dependencies.add(
+                        match.group(1)
+                    )
+
+        # ==================================================
+        # package.json
+        # ==================================================
+
+        elif filename.endswith(
+            "package.json"
+        ):
+
+            try:
+
+                import json
+
+                data = json.loads(
+                    content
+                )
+
+                for section in (
+                    "dependencies",
+                    "devDependencies",
+                ):
+
+                    for dependency in (
+                        data.get(
+                            section,
+                            {},
+                        ).keys()
+                    ):
+
+                        dependencies.add(
+                            dependency
+                        )
+
+            except Exception:
+
+                return []
+
+        # ==================================================
+        # pyproject.toml
+        # ==================================================
+
+        elif filename.endswith(
+            "pyproject.toml"
+        ):
+
+            # Handle common:
+            #
+            # dependencies = [
+            #   "fastapi",
+            #   "pydantic>=2",
+            # ]
+            #
+            # and similar dependency declarations.
+
+            matches = re.findall(
+                r"""["']([A-Za-z0-9_.-]+)(?:[<>=!~^].*)?["']""",
+                content,
+            )
+
+            ignored = {
+                "setuptools",
+                "wheel",
+                "build",
+                "hatchling",
+                "poetry",
+            }
+
+            for dependency in matches:
+
+                normalized = (
+                    dependency.lower()
+                )
+
+                if normalized not in ignored:
+
                     dependencies.add(
                         dependency
                     )
@@ -81,7 +128,6 @@ class GitHubAnalyzer:
         return sorted(
             dependencies
         )
-
     @staticmethod
     def analyze_repository_structure(
         file_paths: list[str],

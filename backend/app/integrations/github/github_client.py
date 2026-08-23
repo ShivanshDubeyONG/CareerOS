@@ -180,12 +180,38 @@ class GitHubClient:
         branch: str,
     ) -> list[str]:
 
+        # Resolve the branch to its actual commit SHA.
         response = self.client.get(
-            f"/repos/{owner}/{repo}/git/trees/{branch}",
+            f"/repos/{owner}/{repo}/branches/{branch}"
+        )
+
+        if response.status_code == 404:
+            return []
+
+        response.raise_for_status()
+
+        branch_data = response.json()
+
+        commit_sha = (
+            branch_data
+            .get("commit", {})
+            .get("sha")
+        )
+
+        if not commit_sha:
+            return []
+
+        # Fetch the complete recursive tree using
+        # the resolved commit SHA.
+        response = self.client.get(
+            f"/repos/{owner}/{repo}/git/trees/{commit_sha}",
             params={
                 "recursive": "1",
             },
         )
+
+        if response.status_code == 404:
+            return []
 
         response.raise_for_status()
 
