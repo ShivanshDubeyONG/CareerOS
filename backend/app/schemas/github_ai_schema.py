@@ -5,10 +5,18 @@ from pydantic import BaseModel, Field
 
 class SkillEvidence(BaseModel):
     skill: str
-
     confidence: str
-
     evidence: str
+
+
+class TechnologyEvidence(BaseModel):
+    technology: str
+
+    evidence_sources: List[str] = Field(
+        default_factory=list
+    )
+
+    confidence: str = "medium"
 
 
 class ProjectInsight(BaseModel):
@@ -25,14 +33,19 @@ class ProjectInsight(BaseModel):
 
     project_type: str
 
-    technologies: List[str]
+    technologies: List[str] = Field(
+        default_factory=list
+    )
+
+    technology_evidence: List[TechnologyEvidence] = Field(
+        default_factory=list
+    )
 
     assessment: str
 
 
 class EvidenceGap(BaseModel):
     area: str
-
     reason: str
 
 

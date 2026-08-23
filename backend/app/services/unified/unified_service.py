@@ -1,19 +1,24 @@
 from app.schemas.github_ai_schema import (
     GitHubAIAnalysis,
 )
+
 from app.schemas.github_schema import (
     GitHubProfile,
 )
+
 from app.schemas.leetcode_schema import (
     LeetCodeAnalysis,
 )
+
 from app.schemas.linkedin_schema import (
     LinkedInAnalysis,
     LinkedInProfile,
 )
+
 from app.schemas.resume_schema import (
     ResumeData,
 )
+
 from app.schemas.unified_schema import (
     CrossSourceFinding,
     EvidenceItem,
@@ -39,9 +44,9 @@ class UnifiedService:
         leetcode_analysis: LeetCodeAnalysis | None = None,
     ) -> UnifiedCandidateProfile:
 
-        # ----------------------------------------------
-        # SKILLS
-        # ----------------------------------------------
+        # --------------------------------------------------
+        # RESUME SKILLS
+        # --------------------------------------------------
 
         resume_skills = self._normalize_skills(
             resume.skills
@@ -49,11 +54,19 @@ class UnifiedService:
             else []
         )
 
+        # --------------------------------------------------
+        # LINKEDIN SKILLS
+        # --------------------------------------------------
+
         linkedin_skills = self._normalize_skills(
             linkedin_analysis.claimed_skills
             if linkedin_analysis
             else []
         )
+
+        # --------------------------------------------------
+        # GITHUB SKILLS
+        # --------------------------------------------------
 
         github_skills = (
             self._extract_github_skills(
@@ -61,11 +74,19 @@ class UnifiedService:
             )
         )
 
+        # --------------------------------------------------
+        # LEETCODE SKILLS
+        # --------------------------------------------------
+
         leetcode_skills = (
             self._extract_leetcode_skills(
                 leetcode_analysis
             )
         )
+
+        # --------------------------------------------------
+        # MERGED SKILLS
+        # --------------------------------------------------
 
         all_skills = self._merge_unique(
             resume_skills,
@@ -74,25 +95,9 @@ class UnifiedService:
             leetcode_skills,
         )
 
-        # ----------------------------------------------
-        # CAREER DOMAIN
-        # ----------------------------------------------
-
-        career_domains = (
-            linkedin_analysis.career_domains
-            if linkedin_analysis
-            else []
-        )
-
-        source_relevance = (
-            self._source_relevance(
-                career_domains
-            )
-        )
-
-        # ----------------------------------------------
+        # --------------------------------------------------
         # SKILL EVIDENCE
-        # ----------------------------------------------
+        # --------------------------------------------------
 
         skill_evidence = (
             self._build_skill_evidence(
@@ -100,13 +105,12 @@ class UnifiedService:
                 linkedin_skills=linkedin_skills,
                 github_skills=github_skills,
                 leetcode_skills=leetcode_skills,
-                career_domains=career_domains,
             )
         )
 
-        # ----------------------------------------------
+        # --------------------------------------------------
         # PROJECT EVIDENCE
-        # ----------------------------------------------
+        # --------------------------------------------------
 
         project_evidence = (
             self._build_project_evidence(
@@ -117,27 +121,20 @@ class UnifiedService:
             )
         )
 
-        # ----------------------------------------------
+        # --------------------------------------------------
         # CROSS-SOURCE FINDINGS
-        # ----------------------------------------------
+        # --------------------------------------------------
 
         findings = (
             self._build_cross_source_findings(
                 skill_evidence=skill_evidence,
                 project_evidence=project_evidence,
-                career_domains=career_domains,
-                github_available=(
-                    github_profile is not None
-                ),
-                leetcode_available=(
-                    leetcode_analysis is not None
-                ),
             )
         )
 
-        # ----------------------------------------------
+        # --------------------------------------------------
         # IDENTITY
-        # ----------------------------------------------
+        # --------------------------------------------------
 
         name = self._resolve_name(
             resume=resume,
@@ -169,9 +166,15 @@ class UnifiedService:
             else None
         )
 
-        # ----------------------------------------------
-        # FINAL UNIFIED PROFILE
-        # ----------------------------------------------
+        career_domains = (
+            linkedin_analysis.career_domains
+            if linkedin_analysis
+            else []
+        )
+
+        # --------------------------------------------------
+        # FINAL PROFILE
+        # --------------------------------------------------
 
         return UnifiedCandidateProfile(
             name=name,
@@ -181,21 +184,9 @@ class UnifiedService:
             career_domains=career_domains,
             current_title=current_title,
             current_company=current_company,
-
-            primary_career_domain=(
-                career_domains[0]
-                if career_domains
-                else None
-            ),
-
-            source_relevance=(
-                source_relevance
-            ),
-
             skill_evidence=skill_evidence,
             project_evidence=project_evidence,
             findings=findings,
-
             source_status={
                 "resume": resume is not None,
                 "github": github_profile is not None,
@@ -209,136 +200,6 @@ class UnifiedService:
         )
 
     # ==================================================
-    # SOURCE RELEVANCE
-    # ==================================================
-
-    @staticmethod
-    def _source_relevance(
-        career_domains: list[str] | None,
-    ) -> dict[str, str]:
-
-        domains = {
-            str(domain)
-            .strip()
-            .lower()
-            for domain in (
-                career_domains or []
-            )
-        }
-
-        # ----------------------------------------------
-        # Default
-        # ----------------------------------------------
-
-        if not domains:
-
-            return {
-                "resume": "high",
-                "linkedin": "high",
-                "github": "medium",
-                "leetcode": "medium",
-            }
-
-        relevance = {
-            "resume": "high",
-            "linkedin": "high",
-            "github": "medium",
-            "leetcode": "low",
-        }
-
-        # ----------------------------------------------
-        # MACHINE LEARNING / AI / DATA SCIENCE
-        # ----------------------------------------------
-
-        if domains.intersection({
-            "machine_learning",
-            "artificial_intelligence",
-            "ai",
-            "data_science",
-        }):
-
-            relevance.update({
-                "resume": "high",
-                "linkedin": "high",
-                "github": "very_high",
-                "leetcode": "medium",
-            })
-
-        # ----------------------------------------------
-        # SOFTWARE / BACKEND
-        # ----------------------------------------------
-
-        if domains.intersection({
-            "software_engineering",
-            "software_development",
-            "backend",
-            "backend_development",
-        }):
-
-            relevance.update({
-                "resume": "high",
-                "linkedin": "high",
-                "github": "very_high",
-                "leetcode": "medium",
-            })
-
-        # ----------------------------------------------
-        # FRONTEND / WEB
-        # ----------------------------------------------
-
-        if domains.intersection({
-            "frontend",
-            "frontend_development",
-            "web_development",
-            "full_stack",
-            "full_stack_development",
-        }):
-
-            relevance.update({
-                "resume": "high",
-                "linkedin": "high",
-                "github": "very_high",
-                "leetcode": "low",
-            })
-
-        # ----------------------------------------------
-        # DATA ENGINEERING / ANALYTICS
-        # ----------------------------------------------
-
-        if domains.intersection({
-            "data_engineering",
-            "data_analytics",
-            "data_analysis",
-        }):
-
-            relevance.update({
-                "resume": "high",
-                "linkedin": "high",
-                "github": "high",
-                "leetcode": "low",
-            })
-
-        # ----------------------------------------------
-        # DESIGN / NON-CODING
-        # ----------------------------------------------
-
-        if domains.intersection({
-            "ui_ux",
-            "design",
-            "product_design",
-            "graphic_design",
-        }):
-
-            relevance.update({
-                "resume": "high",
-                "linkedin": "high",
-                "github": "low",
-                "leetcode": "not_relevant",
-            })
-
-        return relevance
-
-    # ==================================================
     # SKILL NORMALIZATION
     # ==================================================
 
@@ -347,11 +208,11 @@ class UnifiedService:
         skill: str,
     ) -> str:
 
-        value = (
-            str(skill)
-            .strip()
-            .lower()
-        )
+        if not isinstance(
+            skill,
+            str,
+        ):
+            return ""
 
         aliases = {
 
@@ -359,8 +220,8 @@ class UnifiedService:
             # Programming languages
             # ------------------------------------------
 
-            "python": "python",
             "python3": "python",
+            "python": "python",
 
             "cpp": "c++",
             "c plus plus": "c++",
@@ -376,223 +237,259 @@ class UnifiedService:
 
             "c": "c",
 
+            "golang": "go",
+            "go": "go",
+
+            "rust": "rust",
+
+            "kotlin": "kotlin",
+
+            "swift": "swift",
+
+            # ------------------------------------------
+            # Frontend
+            # ------------------------------------------
+
+            "html5": "html",
+            "html": "html",
+
+            "css3": "css",
+            "css": "css",
+
+            "react.js": "react",
+            "reactjs": "react",
+            "react": "react",
+
+            "next.js": "next.js",
+            "nextjs": "next.js",
+
+            "node.js": "node.js",
+            "nodejs": "node.js",
+
+            # ------------------------------------------
+            # Backend
+            # ------------------------------------------
+
+            "fast api": "fastapi",
+            "fastapi": "fastapi",
+
+            "flask": "flask",
+
+            "django": "django",
+
+            "spring boot": "spring boot",
+
+            "express.js": "express",
+            "expressjs": "express",
+            "express": "express",
+
             # ------------------------------------------
             # AI / ML
             # ------------------------------------------
+
+            "ml": "machine learning",
+            "machine learning": (
+                "machine learning"
+            ),
+
+            "dl": "deep learning",
+            "deep learning": (
+                "deep learning"
+            ),
 
             "ai": (
                 "artificial intelligence (ai)"
             ),
 
-            "artificial intelligence":
-                "artificial intelligence (ai)",
+            "artificial intelligence": (
+                "artificial intelligence (ai)"
+            ),
 
-            "artificial intelligence (ai)":
-                "artificial intelligence (ai)",
+            "artificial intelligence (ai)": (
+                "artificial intelligence (ai)"
+            ),
 
-            "ml":
-                "machine learning",
+            "scikit learn": "scikit-learn",
+            "sklearn": "scikit-learn",
+            "scikit-learn": "scikit-learn",
 
-            "machine learning":
-                "machine learning",
+            "tensorflow": "tensorflow",
 
-            "dl":
-                "deep learning",
+            "pytorch": "pytorch",
 
-            "deep learning":
-                "deep learning",
+            "keras": "keras",
 
-            "scikit learn":
-                "scikit-learn",
+            "xg boost": "xgboost",
+            "xgboost": "xgboost",
 
-            "scikit-learn":
-                "scikit-learn",
+            "cat boost": "catboost",
+            "catboost": "catboost",
 
-            "sklearn":
-                "scikit-learn",
+            "numpy": "numpy",
+            "pandas": "pandas",
 
-            "tensorflow":
-                "tensorflow",
-
-            "xgboost":
-                "xgboost",
-
-            "xg boost":
-                "xgboost",
-
-            "catboost":
-                "catboost",
-
-            "cat boost":
-                "catboost",
-
-            "numpy":
-                "numpy",
-
-            "pandas":
-                "pandas",
-
-            # ------------------------------------------
-            # Backend / Web
-            # ------------------------------------------
-
-            "fastapi":
-                "fastapi",
-
-            "flask":
-                "flask",
-
-            "react":
-                "react",
-
-            "react.js":
-                "react",
-
-            "reactjs":
-                "react",
-
-            "next.js":
-                "next.js",
-
-            "nextjs":
-                "next.js",
-
-            "html":
-                "html",
-
-            "css":
-                "css",
+            "matplotlib": "matplotlib",
+            "seaborn": "seaborn",
 
             # ------------------------------------------
             # Databases
             # ------------------------------------------
 
-            "mysql":
-                "mysql",
+            "postgres": "postgresql",
+            "postgresql": "postgresql",
 
-            "postgres":
-                "postgresql",
+            "mysql": "mysql",
 
-            "postgresql":
-                "postgresql",
+            "mongodb": "mongodb",
 
-            "sql":
-                "sql",
+            "sql": "sql",
 
-            # ------------------------------------------
-            # Tools
-            # ------------------------------------------
-
-            "git":
-                "git",
-
-            "github":
-                "github",
-
-            "docker":
-                "docker",
-
-            "render":
-                "render",
-
-            "jupyter":
-                "jupyter notebook",
-
-            "jupyter notebook":
-                "jupyter notebook",
+            "redis": "redis",
 
             # ------------------------------------------
-            # DSA / LeetCode
+            # Cloud / DevOps
             # ------------------------------------------
 
-            "dsa":
-                "dsa",
+            "docker": "docker",
 
-            "data structures":
-                "data structures",
+            "kubernetes": "kubernetes",
 
-            "array":
-                "arrays",
+            "aws": "aws",
 
-            "arrays":
-                "arrays",
+            "gcp": "google cloud",
+            "google cloud": "google cloud",
 
-            "string":
-                "strings",
+            "azure": "azure",
 
-            "strings":
-                "strings",
+            "render": "render",
 
-            "linked list":
-                "linked list",
+            # ------------------------------------------
+            # Developer tools
+            # ------------------------------------------
 
-            "hash table":
-                "hash table",
+            "git": "git",
+            "github": "github",
 
-            "hashmap":
-                "hash table",
+            "github actions": "github actions",
 
-            "hash map":
-                "hash table",
+            "jenkins": "jenkins",
 
-            "stack":
-                "stack",
+            "ci/cd": "ci/cd",
 
-            "queue":
-                "queue",
+            "linux": "linux",
 
-            "binary search":
-                "binary search",
+            "bash": "bash",
 
-            "sorting":
-                "sorting",
+            # ------------------------------------------
+            # APIs
+            # ------------------------------------------
 
-            "two pointers":
-                "two pointers",
+            "rest api": "rest api",
+            "rest apis": "rest api",
+            "rest": "rest api",
 
-            "sliding window":
-                "sliding window",
+            "api": "api",
 
-            "tree":
-                "trees",
+            # ------------------------------------------
+            # DSA
+            # ------------------------------------------
 
-            "trees":
-                "trees",
+            "dsa": "dsa",
 
-            "graph":
-                "graphs",
+            "data structure": (
+                "data structures"
+            ),
 
-            "graphs":
-                "graphs",
+            "data structures": (
+                "data structures"
+            ),
 
-            "heap":
-                "heap / priority queue",
+            "algorithm": "algorithms",
+            "algorithms": "algorithms",
 
-            "priority queue":
-                "heap / priority queue",
+            "array": "arrays",
+            "arrays": "arrays",
 
-            "greedy":
-                "greedy",
+            "string": "strings",
+            "strings": "strings",
 
-            "dynamic programming":
-                "dynamic programming",
+            "hashmap": "hash table",
+            "hash map": "hash table",
+            "hash table": "hash table",
+
+            "stack": "stack",
+            "queue": "queue",
+
+            "linked list": "linked list",
+
+            "binary search": "binary search",
+
+            "sorting": "sorting",
+
+            "two pointers": "two pointers",
+
+            "sliding window": "sliding window",
+
+            "tree": "trees",
+            "trees": "trees",
+
+            "graph": "graphs",
+            "graphs": "graphs",
+
+            "heap": (
+                "heap / priority queue"
+            ),
+
+            "priority queue": (
+                "heap / priority queue"
+            ),
+
+            "heap / priority queue": (
+                "heap / priority queue"
+            ),
+
+            "greedy": "greedy",
+
+            "dynamic programming": (
+                "dynamic programming"
+            ),
+
+            "dp": "dynamic programming",
+
+            "backtracking": "backtracking",
+
+            "recursion": "recursion",
+
+            "bit manipulation": (
+                "bit manipulation"
+            ),
         }
 
+        cleaned = (
+            " ".join(
+                skill.strip().split()
+            )
+            .lower()
+        )
+
         return aliases.get(
-            value,
-            value,
+            cleaned,
+            cleaned,
         )
 
     @classmethod
     def _normalize_skills(
         cls,
-        skills,
+        skills: list[str],
     ) -> list[str]:
 
         normalized = []
+        seen = set()
 
         for skill in skills or []:
 
+            # Defensive handling in case an object
+            # rather than a string is accidentally passed.
             if not isinstance(
                 skill,
                 str,
@@ -613,23 +510,27 @@ class UnifiedService:
                 skill
             )
 
-            if (
-                value
-                and value not in normalized
-            ):
-                normalized.append(value)
+            if not value:
+                continue
+
+            if value in seen:
+                continue
+
+            seen.add(value)
+            normalized.append(value)
 
         return normalized
 
     @classmethod
     def _merge_unique(
         cls,
-        *skill_lists,
+        *skill_lists: list[str],
     ) -> list[str]:
 
-        merged = []
+        result = []
+        seen = set()
 
-        for skills in skill_lists:
+        for skills in skill_lists or []:
 
             for skill in skills or []:
 
@@ -649,17 +550,24 @@ class UnifiedService:
 
                     skill = skill_value
 
-                value = cls._normalize_skill(
-                    skill
+                normalized = (
+                    cls._normalize_skill(
+                        skill
+                    )
                 )
 
-                if (
-                    value
-                    and value not in merged
-                ):
-                    merged.append(value)
+                if not normalized:
+                    continue
 
-        return merged
+                if normalized in seen:
+                    continue
+
+                seen.add(normalized)
+                result.append(normalized)
+
+        return sorted(
+            result
+        )
 
     # ==================================================
     # GITHUB SKILLS
@@ -676,9 +584,9 @@ class UnifiedService:
 
         skills = []
 
-        # ----------------------------------------------
-        # Demonstrated skills
-        # ----------------------------------------------
+        # --------------------------------------------------
+        # Explicit demonstrated skills
+        # --------------------------------------------------
 
         for item in (
             analysis.demonstrated_skills
@@ -690,7 +598,9 @@ class UnifiedService:
                 str,
             ):
 
-                value = item
+                skills.append(
+                    item
+                )
 
             else:
 
@@ -700,19 +610,67 @@ class UnifiedService:
                     None,
                 )
 
-            if value:
+                if value:
+                    skills.append(
+                        value
+                    )
+
+        # --------------------------------------------------
+        # Technical strengths
+        # --------------------------------------------------
+
+        for item in (
+            analysis.technical_strengths
+            or []
+        ):
+
+            if item:
                 skills.append(
-                    value
+                    item
                 )
 
-        # ----------------------------------------------
-        # Project technologies
-        # ----------------------------------------------
+        # --------------------------------------------------
+        # Technology evidence
+        #
+        # Only use medium/high-confidence evidence.
+        # README-only low-confidence claims should NOT
+        # become demonstrated GitHub skills.
+        # --------------------------------------------------
 
         for project in (
             analysis.projects
             or []
         ):
+
+            for technology in (
+                project.technology_evidence
+                or []
+            ):
+
+                confidence = (
+                    str(
+                        technology.confidence
+                    )
+                    .lower()
+                    .strip()
+                )
+
+                if confidence not in {
+                    "high",
+                    "medium",
+                }:
+
+                    continue
+
+                if technology.technology:
+
+                    skills.append(
+                        technology.technology
+                    )
+
+            # --------------------------------------------------
+            # Backward compatibility with the old field.
+            # --------------------------------------------------
 
             for technology in (
                 project.technologies
@@ -743,32 +701,36 @@ class UnifiedService:
 
         skills = []
 
-        # ----------------------------------------------
+        # --------------------------------------------------
         # Languages
-        # ----------------------------------------------
+        # --------------------------------------------------
 
         skills.extend(
             analysis.languages
             or []
         )
 
-        # ----------------------------------------------
-        # Strong skills
-        # ----------------------------------------------
+        # --------------------------------------------------
+        # Strongest skills
+        # --------------------------------------------------
 
         skills.extend(
             analysis.strongest_skills
             or []
         )
 
+        # --------------------------------------------------
+        # Strong areas
+        # --------------------------------------------------
+
         skills.extend(
             analysis.strong_areas
             or []
         )
 
-        # ----------------------------------------------
+        # --------------------------------------------------
         # Developing areas
-        # ----------------------------------------------
+        # --------------------------------------------------
 
         skills.extend(
             analysis.developing_areas
@@ -778,6 +740,176 @@ class UnifiedService:
         return cls._normalize_skills(
             skills
         )
+
+    # ==================================================
+    # SKILL-SOURCE RELEVANCE
+    #
+    # THIS IS THE IMPORTANT FIX.
+    #
+    # LeetCode is NOT a universal skill verifier.
+    # ==================================================
+
+    @classmethod
+    def _relevant_verification_sources(
+        cls,
+        skill: str,
+    ) -> set[str]:
+
+        normalized = (
+            cls._normalize_skill(
+                skill
+            )
+        )
+
+        # --------------------------------------------------
+        # Programming languages
+        #
+        # GitHub + LeetCode can both demonstrate these.
+        # --------------------------------------------------
+
+        programming_languages = {
+            "python",
+            "c",
+            "c++",
+            "java",
+            "javascript",
+            "typescript",
+            "go",
+            "rust",
+            "kotlin",
+            "swift",
+        }
+
+        if normalized in (
+            programming_languages
+        ):
+
+            return {
+                "github",
+                "leetcode",
+            }
+
+        # --------------------------------------------------
+        # DSA / algorithm concepts
+        #
+        # LeetCode is highly relevant.
+        # GitHub is also useful.
+        # --------------------------------------------------
+
+        dsa_skills = {
+            "dsa",
+            "data structures",
+            "algorithms",
+            "arrays",
+            "strings",
+            "hash table",
+            "stack",
+            "queue",
+            "linked list",
+            "binary search",
+            "sorting",
+            "two pointers",
+            "sliding window",
+            "trees",
+            "graphs",
+            "heap / priority queue",
+            "greedy",
+            "dynamic programming",
+            "backtracking",
+            "recursion",
+            "bit manipulation",
+        }
+
+        if normalized in dsa_skills:
+
+            return {
+                "github",
+                "leetcode",
+            }
+
+        # --------------------------------------------------
+        # Technologies / frameworks
+        #
+        # GitHub is meaningful.
+        # LeetCode is NOT.
+        # --------------------------------------------------
+
+        github_first_skills = {
+            "html",
+            "css",
+
+            "react",
+            "next.js",
+
+            "node.js",
+            "express",
+
+            "fastapi",
+            "flask",
+            "django",
+            "spring boot",
+
+            "docker",
+            "kubernetes",
+
+            "git",
+            "github",
+            "github actions",
+
+            "mysql",
+            "postgresql",
+            "sql",
+            "mongodb",
+            "redis",
+
+            "tensorflow",
+            "pytorch",
+            "keras",
+
+            "scikit-learn",
+            "numpy",
+            "pandas",
+            "matplotlib",
+            "seaborn",
+
+            "xgboost",
+            "catboost",
+
+            "aws",
+            "azure",
+            "google cloud",
+
+            "render",
+
+            "linux",
+            "bash",
+
+            "jenkins",
+            "ci/cd",
+
+            "rest api",
+            "api",
+
+            "machine learning",
+            "deep learning",
+            "artificial intelligence (ai)",
+        }
+
+        if normalized in github_first_skills:
+
+            return {
+                "github",
+            }
+
+        # --------------------------------------------------
+        # Unknown technical skills:
+        #
+        # Default to GitHub rather than LeetCode.
+        # --------------------------------------------------
+
+        return {
+            "github",
+        }
 
     # ==================================================
     # SKILL EVIDENCE
@@ -790,7 +922,6 @@ class UnifiedService:
         linkedin_skills: list[str],
         github_skills: list[str],
         leetcode_skills: list[str],
-        career_domains: list[str] | None = None,
     ) -> list[SkillEvidence]:
 
         all_skills = cls._merge_unique(
@@ -800,105 +931,138 @@ class UnifiedService:
             leetcode_skills,
         )
 
-        source_relevance = (
-            cls._source_relevance(
-                career_domains
-            )
-        )
-
         evidence = []
 
         for skill in all_skills:
 
+            normalized = (
+                cls._normalize_skill(
+                    skill
+                )
+            )
+
+            # --------------------------------------------------
+            # CLAIMS
+            # --------------------------------------------------
+
             resume_claimed = (
-                skill in resume_skills
+                normalized
+                in resume_skills
             )
 
             linkedin_claimed = (
-                skill in linkedin_skills
+                normalized
+                in linkedin_skills
             )
 
+            # --------------------------------------------------
+            # DEMONSTRATIONS
+            # --------------------------------------------------
+
             github_demonstrated = (
-                skill in github_skills
+                normalized
+                in github_skills
             )
 
             leetcode_demonstrated = (
-                skill in leetcode_skills
+                normalized
+                in leetcode_skills
             )
+
+            # --------------------------------------------------
+            # WHICH SOURCES ACTUALLY MATTER?
+            # --------------------------------------------------
+
+            relevant_sources = (
+                cls._relevant_verification_sources(
+                    normalized
+                )
+            )
+
+            # --------------------------------------------------
+            # SUPPORTING SOURCES
+            # --------------------------------------------------
 
             supporting_sources = []
 
             if resume_claimed:
+
                 supporting_sources.append(
                     "resume"
                 )
 
             if linkedin_claimed:
+
                 supporting_sources.append(
                     "linkedin"
                 )
 
-            if github_demonstrated:
+            if (
+                github_demonstrated
+                and "github"
+                in relevant_sources
+            ):
+
                 supporting_sources.append(
                     "github"
                 )
 
-            if leetcode_demonstrated:
+            if (
+                leetcode_demonstrated
+                and "leetcode"
+                in relevant_sources
+            ):
+
                 supporting_sources.append(
                     "leetcode"
                 )
 
-            demonstrated = (
-                github_demonstrated
-                or leetcode_demonstrated
-            )
+            # --------------------------------------------------
+            # CLAIMED
+            # --------------------------------------------------
 
             claimed = (
                 resume_claimed
                 or linkedin_claimed
             )
 
-            # ------------------------------------------
-            # Evidence status
-            # ------------------------------------------
+            # --------------------------------------------------
+            # DEMONSTRATED
+            #
+            # A LeetCode result only counts if LeetCode
+            # is actually relevant to the skill.
+            # --------------------------------------------------
 
-            if (
-                demonstrated
-                and len(
-                    supporting_sources
-                ) >= 3
-            ):
-
-                status = (
-                    "strongly_supported"
+            demonstrated = (
+                (
+                    github_demonstrated
+                    and "github"
+                    in relevant_sources
                 )
-
-            elif demonstrated:
-
-                status = (
-                    "demonstrated"
+                or
+                (
+                    leetcode_demonstrated
+                    and "leetcode"
+                    in relevant_sources
                 )
+            )
 
-            elif claimed:
-
-                status = (
-                    "claimed_only"
-                )
-
-            else:
-
-                status = (
-                    "unknown"
-                )
-
-            # ------------------------------------------
-            # Missing supporting sources
-            # ------------------------------------------
+            # --------------------------------------------------
+            # MISSING SUPPORT
+            #
+            # IMPORTANT:
+            #
+            # We don't call LeetCode "missing" for CSS.
+            #
+            # We also don't punish an unavailable source.
+            # --------------------------------------------------
 
             missing_sources = []
 
             if (
                 claimed
+                and "github"
+                in relevant_sources
                 and not github_demonstrated
             ):
 
@@ -908,6 +1072,8 @@ class UnifiedService:
 
             if (
                 claimed
+                and "leetcode"
+                in relevant_sources
                 and not leetcode_demonstrated
             ):
 
@@ -915,9 +1081,57 @@ class UnifiedService:
                     "leetcode"
                 )
 
-            # ------------------------------------------
-            # Evidence items
-            # ------------------------------------------
+            # --------------------------------------------------
+            # STATUS
+            # --------------------------------------------------
+
+            if demonstrated:
+
+                if len(
+                    supporting_sources
+                ) >= 3:
+
+                    status = (
+                        "strongly_supported"
+                    )
+
+                elif len(
+                    supporting_sources
+                ) >= 2:
+
+                    status = (
+                        "supported"
+                    )
+
+                else:
+
+                    status = (
+                        "demonstrated"
+                    )
+
+            elif claimed:
+
+                if missing_sources:
+
+                    status = (
+                        "claimed_not_independently_verified"
+                    )
+
+                else:
+
+                    status = (
+                        "claimed_only"
+                    )
+
+            else:
+
+                status = (
+                    "unknown"
+                )
+
+            # --------------------------------------------------
+            # EVIDENCE ITEMS
+            # --------------------------------------------------
 
             evidence_items = []
 
@@ -927,7 +1141,7 @@ class UnifiedService:
                     EvidenceItem(
                         source="resume",
                         evidence_type="claim",
-                        value=skill,
+                        value=normalized,
                         strength="claim",
                     )
                 )
@@ -938,12 +1152,16 @@ class UnifiedService:
                     EvidenceItem(
                         source="linkedin",
                         evidence_type="claim",
-                        value=skill,
+                        value=normalized,
                         strength="claim",
                     )
                 )
 
-            if github_demonstrated:
+            if (
+                github_demonstrated
+                and "github"
+                in relevant_sources
+            ):
 
                 evidence_items.append(
                     EvidenceItem(
@@ -951,12 +1169,16 @@ class UnifiedService:
                         evidence_type=(
                             "demonstration"
                         ),
-                        value=skill,
+                        value=normalized,
                         strength="demonstrated",
                     )
                 )
 
-            if leetcode_demonstrated:
+            if (
+                leetcode_demonstrated
+                and "leetcode"
+                in relevant_sources
+            ):
 
                 evidence_items.append(
                     EvidenceItem(
@@ -964,82 +1186,45 @@ class UnifiedService:
                         evidence_type=(
                             "demonstration"
                         ),
-                        value=skill,
+                        value=normalized,
                         strength="demonstrated",
                     )
                 )
 
-            # ------------------------------------------
-            # Skill relevance
-            # ------------------------------------------
-
-            if github_demonstrated:
-
-                if (
-                    source_relevance["github"]
-                    == "very_high"
-                ):
-
-                    relevance = "high"
-
-                elif (
-                    source_relevance["github"]
-                    == "high"
-                ):
-
-                    relevance = "medium"
-
-                else:
-
-                    relevance = "standard"
-
-            elif leetcode_demonstrated:
-
-                if (
-                    source_relevance["leetcode"]
-                    == "very_high"
-                ):
-
-                    relevance = "high"
-
-                elif (
-                    source_relevance["leetcode"]
-                    == "medium"
-                ):
-
-                    relevance = "medium"
-
-                else:
-
-                    relevance = "low"
-
-            else:
-
-                relevance = "standard"
+            # --------------------------------------------------
+            # FINAL OBJECT
+            # --------------------------------------------------
 
             evidence.append(
                 SkillEvidence(
-                    skill=skill,
+                    skill=normalized,
+
                     resume_claimed=(
                         resume_claimed
                     ),
+
                     linkedin_claimed=(
                         linkedin_claimed
                     ),
+
                     github_demonstrated=(
                         github_demonstrated
                     ),
+
                     leetcode_demonstrated=(
                         leetcode_demonstrated
                     ),
+
                     supporting_sources=(
                         supporting_sources
                     ),
+
                     missing_supporting_sources=(
                         missing_sources
                     ),
+
                     status=status,
-                    relevance=relevance,
+
                     evidence=evidence_items,
                 )
             )
@@ -1061,9 +1246,9 @@ class UnifiedService:
 
         projects = {}
 
-        # ----------------------------------------------
+        # --------------------------------------------------
         # GitHub AI projects
-        # ----------------------------------------------
+        # --------------------------------------------------
 
         if github_analysis:
 
@@ -1080,15 +1265,16 @@ class UnifiedService:
                     name
                 )
 
-                if key not in projects:
-
-                    projects[key] = {
+                projects.setdefault(
+                    key,
+                    {
                         "name": name,
                         "github": False,
                         "linkedin": False,
                         "resume": False,
                         "repository": None,
-                    }
+                    },
+                )
 
                 projects[key][
                     "github"
@@ -1098,9 +1284,9 @@ class UnifiedService:
                     "repository"
                 ] = project.repository
 
-        # ----------------------------------------------
-        # Raw GitHub fallback
-        # ----------------------------------------------
+        # --------------------------------------------------
+        # Raw GitHub repositories
+        # --------------------------------------------------
 
         if github_profile:
 
@@ -1115,15 +1301,16 @@ class UnifiedService:
                     name
                 )
 
-                if key not in projects:
-
-                    projects[key] = {
+                projects.setdefault(
+                    key,
+                    {
                         "name": name,
                         "github": False,
                         "linkedin": False,
                         "resume": False,
                         "repository": None,
-                    }
+                    },
+                )
 
                 projects[key][
                     "github"
@@ -1131,19 +1318,15 @@ class UnifiedService:
 
                 projects[key][
                     "repository"
-                ] = (
-                    repository.full_name
-                    if getattr(
-                        repository,
-                        "full_name",
-                        None,
-                    )
-                    else name
-                )
+                ] = getattr(
+                    repository,
+                    "full_name",
+                    None,
+                ) or name
 
-        # ----------------------------------------------
+        # --------------------------------------------------
         # LinkedIn projects
-        # ----------------------------------------------
+        # --------------------------------------------------
 
         if linkedin_profile:
 
@@ -1158,23 +1341,24 @@ class UnifiedService:
                     name
                 )
 
-                if key not in projects:
-
-                    projects[key] = {
+                projects.setdefault(
+                    key,
+                    {
                         "name": name,
                         "github": False,
                         "linkedin": False,
                         "resume": False,
                         "repository": None,
-                    }
+                    },
+                )
 
                 projects[key][
                     "linkedin"
                 ] = True
 
-        # ----------------------------------------------
+        # --------------------------------------------------
         # Resume project matching
-        # ----------------------------------------------
+        # --------------------------------------------------
 
         if (
             resume
@@ -1182,36 +1366,34 @@ class UnifiedService:
         ):
 
             resume_text = (
-                resume.projects.lower()
-            )
-
-            normalized_resume = (
-                cls._project_key(
-                    resume_text
+                str(
+                    resume.projects
                 )
+                .lower()
             )
 
             for item in (
                 projects.values()
             ):
 
-                normalized_name = (
-                    cls._project_key(
-                        item["name"]
-                    )
+                project_name = (
+                    item["name"]
+                    .lower()
                 )
 
                 if (
-                    normalized_name
-                    and normalized_name
-                    in normalized_resume
+                    project_name
+                    and project_name
+                    in resume_text
                 ):
 
-                    item["resume"] = True
+                    item[
+                        "resume"
+                    ] = True
 
-        # ----------------------------------------------
-        # Build result
-        # ----------------------------------------------
+        # --------------------------------------------------
+        # Build final project evidence
+        # --------------------------------------------------
 
         results = []
 
@@ -1230,6 +1412,10 @@ class UnifiedService:
             resume_present = (
                 item["resume"]
             )
+
+            # ----------------------------------------------
+            # STATUS
+            # ----------------------------------------------
 
             if (
                 github_present
@@ -1272,7 +1458,7 @@ class UnifiedService:
             elif resume_present:
 
                 status = (
-                    "resume_only"
+                    "resume_claimed"
                 )
 
                 finding = (
@@ -1284,7 +1470,12 @@ class UnifiedService:
             else:
 
                 status = "unknown"
+
                 finding = None
+
+            # ----------------------------------------------
+            # EVIDENCE
+            # ----------------------------------------------
 
             project_evidence = []
 
@@ -1355,53 +1546,13 @@ class UnifiedService:
     def _build_cross_source_findings(
         skill_evidence: list[SkillEvidence],
         project_evidence: list[ProjectEvidence],
-        career_domains: list[str] | None = None,
-        github_available: bool = False,
-        leetcode_available: bool = False,
     ) -> list[CrossSourceFinding]:
 
         findings = []
 
-        # ----------------------------------------------
-        # Determine relevant verification sources
-        # ----------------------------------------------
-
-        source_relevance = (
-            UnifiedService
-            ._source_relevance(
-                career_domains
-            )
-        )
-
-        verification_sources = []
-
-        if (
-            github_available
-            and source_relevance["github"]
-            != "not_relevant"
-        ):
-
-            verification_sources.append(
-                "github"
-            )
-
-        if (
-            leetcode_available
-            and source_relevance["leetcode"]
-            not in {
-                "low",
-                "not_relevant",
-            }
-        ):
-
-            verification_sources.append(
-                "leetcode"
-            )
-
-        # ----------------------------------------------
-        # Skill claims that are not independently
-        # demonstrated by a relevant source
-        # ----------------------------------------------
+        # --------------------------------------------------
+        # Unsupported / unverified skill claims
+        # --------------------------------------------------
 
         for skill in skill_evidence:
 
@@ -1412,7 +1563,6 @@ class UnifiedService:
 
                 continue
 
-            # Already demonstrated.
             if (
                 skill.github_demonstrated
                 or skill.leetcode_demonstrated
@@ -1420,8 +1570,19 @@ class UnifiedService:
 
                 continue
 
-            # Nothing relevant is connected.
-            if not verification_sources:
+            # --------------------------------------------------
+            # THIS IS THE IMPORTANT PART:
+            #
+            # If there is no relevant missing evidence,
+            # do NOT generate a finding.
+            #
+            # CSS with no LeetCode evidence therefore
+            # produces nothing here.
+            # --------------------------------------------------
+
+            if not (
+                skill.missing_supporting_sources
+            ):
 
                 continue
 
@@ -1452,24 +1613,39 @@ class UnifiedService:
                     )
                 )
 
+            verification_sources = (
+                skill.missing_supporting_sources
+            )
+
             findings.append(
                 CrossSourceFinding(
                     finding_type=(
                         "skill_not_independently_verified"
                     ),
                     subject=skill.skill,
-                    severity="warning",
+                    severity="info",
                     message=(
                         f"{skill.skill} is claimed "
                         f"in {', '.join(claim_sources)}, "
                         "but no independent supporting "
                         "evidence was found in the "
-                        "currently relevant connected "
-                        "verification sources "
-                        f"({', '.join(verification_sources)}). "
-                        "This does not mean the skill "
-                        "is incorrect or that the "
-                        "candidate does not possess it."
+                        "relevant verification source"
+                        + (
+                            "s"
+                            if len(
+                                verification_sources
+                            ) != 1
+                            else ""
+                        )
+                        + (
+                            f" ({', '.join(verification_sources)}). "
+                        )
+                        + (
+                            "This does not mean the "
+                            "skill is incorrect or that "
+                            "the candidate does not "
+                            "possess it."
+                        )
                     ),
                     sources=(
                         claim_sources
@@ -1479,9 +1655,9 @@ class UnifiedService:
                 )
             )
 
-        # ----------------------------------------------
+        # --------------------------------------------------
         # GitHub project missing from LinkedIn
-        # ----------------------------------------------
+        # --------------------------------------------------
 
         for project in project_evidence:
 
@@ -1511,9 +1687,9 @@ class UnifiedService:
                     )
                 )
 
-        # ----------------------------------------------
+        # --------------------------------------------------
         # LinkedIn project without GitHub
-        # ----------------------------------------------
+        # --------------------------------------------------
 
         for project in project_evidence:
 
@@ -1624,7 +1800,12 @@ class UnifiedService:
         )
 
         value = value.replace(
-            "|",
+            "/",
+            " ",
+        )
+
+        value = value.replace(
+            ".",
             " ",
         )
 

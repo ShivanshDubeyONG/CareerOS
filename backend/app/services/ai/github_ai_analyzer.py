@@ -1,5 +1,3 @@
-from typing import List
-
 from app.services.ai.gemini_client import GeminiClient
 from app.services.ai.github_scoring import GitHubScorer
 
@@ -36,11 +34,9 @@ class GitHubAIAnalyzer:
                 "name": repository.name,
                 "full_name": repository.full_name,
                 "description": repository.description,
-
                 "url": repository.url,
 
                 "language": repository.language,
-
                 "languages": repository.languages,
 
                 "topics": repository.topics,
@@ -188,11 +184,11 @@ You are the GitHub intelligence engine for CareerOS.
 Your job is to evaluate a candidate's GitHub portfolio
 using ONLY the repository evidence provided below.
 
-Do NOT assume that README claims are true unless
-repository evidence supports them.
+Do NOT invent information.
 
-Do NOT reward a project simply because its name sounds
-impressive.
+Do NOT assume README claims are implemented.
+
+Do NOT reward repository names.
 
 Do NOT confuse repository size with engineering quality.
 
@@ -225,18 +221,131 @@ REPOSITORY EVIDENCE
 
 
 ==================================================
-EVALUATION RULES
+TECHNOLOGY EVIDENCE RULES
+==================================================
+
+For every meaningful repository, identify technologies
+that are actually supported by the supplied evidence.
+
+Technology evidence has different strengths.
+
+HIGH CONFIDENCE evidence:
+
+- GitHub language statistics
+- Explicit dependency names
+- dependency files such as requirements.txt,
+  pyproject.toml, package.json
+- Docker configuration
+- configuration files
+- clear source-code structure
+- clear frontend structure
+
+MEDIUM CONFIDENCE evidence:
+
+- source directory structure
+- file extensions
+- framework-specific project files
+- repository configuration
+
+LOW CONFIDENCE evidence:
+
+- README-only claims
+- repository description-only claims
+- topics alone
+
+IMPORTANT:
+
+A README saying:
+
+"Built with React, FastAPI, PostgreSQL and Docker"
+
+does NOT prove all four technologies.
+
+Only mark them as demonstrated when the repository evidence
+supports them.
+
+For every technology returned in technology_evidence:
+
+technology:
+    canonical technology name
+
+evidence_sources:
+    one or more of:
+        "language"
+        "dependency"
+        "dependency_file"
+        "source_structure"
+        "configuration"
+        "docker"
+        "frontend_structure"
+        "file_path"
+        "readme"
+        "topic"
+
+confidence:
+    "high"
+    "medium"
+    "low"
+
+Examples:
+
+Python detected in GitHub language statistics:
+
+technology:
+    Python
+
+evidence_sources:
+    ["language"]
+
+confidence:
+    high
+
+
+FastAPI found in dependency information:
+
+technology:
+    FastAPI
+
+evidence_sources:
+    ["dependency", "dependency_file"]
+
+confidence:
+    high
+
+
+Dockerfile detected:
+
+technology:
+    Docker
+
+evidence_sources:
+    ["docker", "configuration"]
+
+confidence:
+    high
+
+
+React appears ONLY in README:
+
+technology:
+    React
+
+evidence_sources:
+    ["readme"]
+
+confidence:
+    low
+
+
+==================================================
+PROJECT EVALUATION RULES
 ==================================================
 
 For EVERY repository:
 
 1. Determine whether it is a meaningful portfolio project.
 
-A meaningful project should demonstrate substantial
-engineering, problem solving, implementation, or domain
-knowledge.
-
-Examples:
+Meaningful examples:
 
 - End-to-end applications
 - ML/data projects with actual implementation
@@ -247,7 +356,7 @@ Examples:
 - AI applications
 - Data engineering systems
 - Infrastructure/DevOps projects
-- Non-trivial browser/mobile applications
+- Browser/mobile applications
 
 Do NOT automatically mark something meaningful merely
 because it contains many files.
@@ -255,9 +364,9 @@ because it contains many files.
 Do NOT automatically reject small projects if they solve
 a real problem well.
 
-2. Identify the project stage:
+2. Identify project stage:
 
-Possible values include:
+Possible values:
 
 - learning
 - prototype
@@ -266,9 +375,7 @@ Possible values include:
 - maintained
 - abandoned
 
-Use repository evidence.
-
-3. Identify the project type.
+3. Identify project type.
 
 Examples:
 
@@ -301,40 +408,22 @@ Consider:
 - originality
 - real-world usefulness
 
-IMPORTANT:
+Do NOT treat planned features as implemented.
 
-A project that is technically sophisticated but incomplete
-can still score well, but do not treat planned features
-as implemented features.
+5. Detect tutorial/learning repositories.
 
-5. Identify technologies ONLY when supported by:
-
-- source files
-- dependency files
-- language data
-- configuration
-- repository structure
-
-Do not blindly copy technologies mentioned in a README.
-
-6. Write a concise assessment explaining WHY the project
-received its score.
-
-7. Detect tutorial/learning repositories.
-
-Repositories clearly following a tutorial/course should
-generally be marked:
+Tutorial/course repositories should generally be:
 
 meaningful_project = false
 
-unless there is strong evidence of substantial original
+unless strong evidence shows substantial original
 development.
 
-8. Detect forks carefully.
+6. Detect forks carefully.
 
-A fork is NOT automatically bad.
+A fork is not automatically bad.
 
-Use the fork comparison evidence:
+Use:
 
 - unique commits
 - changed files
@@ -344,39 +433,20 @@ Use the fork comparison evidence:
 A fork with essentially no candidate changes should
 generally NOT count as meaningful original portfolio work.
 
-A heavily modified fork may still be meaningful.
+7. Distinguish activity from quality.
 
-Never claim that a candidate made substantial changes
-unless the supplied evidence supports it.
+Recent commits do not automatically mean high quality.
 
-9. Quantity matters.
-
-A candidate with several substantive projects should
-receive more portfolio-depth credit than a candidate with
-only one project.
-
-However, do NOT reward repository spam.
-
-Ten tiny projects should not beat three substantial ones.
-
-10. Distinguish repository activity from project quality.
-
-Recent commits do NOT automatically mean a project is good.
-
-A project can be high quality but inactive because it is
-finished.
-
-Likewise, frequent commits do not automatically indicate
-high engineering quality.
-
+Frequent commits do not automatically mean strong
+engineering.
 
 ==================================================
-IMPORTANT
+GENERAL RULE
 ==================================================
 
-Base every evaluation on the supplied evidence.
+Base every evaluation ONLY on supplied evidence.
 
-Do not invent:
+Never invent:
 
 - technologies
 - deployments
@@ -388,10 +458,10 @@ Do not invent:
 - production usage
 - contributions
 
-If evidence is missing, say that evidence is missing.
+If evidence is missing, say it is missing.
 
-Return the structured response exactly according to the
-provided schema.
+Return the structured response exactly according
+to the provided schema.
 """
 
         return self.gemini.generate_structured(
