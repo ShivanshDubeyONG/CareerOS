@@ -169,11 +169,24 @@ class CareerAnalysisService:
 
                     pass
 
-            dependencies = (
-                self.github_analyzer
-                .extract_dependencies(
-                    dependency_data
+            dependencies = []
+
+            for filename, content in dependency_data.items():
+
+                extracted = (
+                    self.github_analyzer
+                    .extract_dependencies(
+                        content,
+                        filename,
+                    )
                 )
+
+                dependencies.extend(
+                    extracted
+                )
+
+            dependencies = sorted(
+                set(dependencies)
             )
 
             repository = GitHubRepository(
