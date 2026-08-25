@@ -23,53 +23,46 @@ class GitHubScorer:
             if project.meaningful_project
         ]
 
-        project_quality = (
-            self.project_quality(
-                meaningful_projects
-            )
+        project_quality = self.project_quality(
+            meaningful_projects
         )
 
-        portfolio_depth = (
-            self.portfolio_depth(
-                meaningful_projects
-            )
+        portfolio_depth = self.portfolio_depth(
+            meaningful_projects
         )
 
-        technical_breadth = (
-            self.technical_breadth(
-                profile,
-                meaningful_projects,
-            )
+        technical_breadth = self.technical_breadth(
+            profile,
+            meaningful_projects,
         )
 
-        activity = (
-            self.activity(
-                profile,
-                meaningful_projects,
-            )
+        activity = self.activity(
+            profile,
+            meaningful_projects,
         )
 
-        documentation = (
-            self.documentation(
-                profile,
-                meaningful_projects,
-            )
+        documentation = self.documentation(
+            profile,
+            meaningful_projects,
         )
 
-        originality = (
-            self.originality(
-                profile,
-                meaningful_projects,
-            )
+        originality = self.originality(
+            profile,
+            meaningful_projects,
         )
+
+        # Project quality is the most important signal.
+        # Portfolio depth measures quantity separately.
+        # Activity is intentionally low-weight because an old,
+        # completed project should not be treated as a bad project.
 
         overall = (
-            project_quality * 0.30
-            + portfolio_depth * 0.30
+            project_quality * 0.40
+            + portfolio_depth * 0.20
             + technical_breadth * 0.15
-            + activity * 0.10
             + documentation * 0.10
-            + originality * 0.05
+            + originality * 0.10
+            + activity * 0.05
         )
 
         dimensions = {
@@ -94,35 +87,30 @@ class GitHubScorer:
         recommendations = []
 
         if documentation < 65:
-
             recommendations.append(
                 "Improve README documentation with clear "
                 "setup, architecture, usage, and implementation details."
             )
 
         if portfolio_depth < 65:
-
             recommendations.append(
                 "Build additional substantive projects while "
                 "maintaining the quality of existing work."
             )
 
         if technical_breadth < 60:
-
             recommendations.append(
                 "Add projects that demonstrate different "
                 "technologies, domains, or engineering patterns."
             )
 
         if activity < 55:
-
             recommendations.append(
                 "Maintain meaningful repositories and demonstrate "
                 "consistent development over time."
             )
 
         if originality < 70:
-
             recommendations.append(
                 "Prioritize original projects and clearly demonstrate "
                 "personal contributions to forked repositories."
@@ -141,8 +129,8 @@ class GitHubScorer:
                     1,
                 ),
                 rationale=(
-                    "Average quality of meaningful projects "
-                    "identified by the GitHub intelligence engine."
+                    "Measures the demonstrated technical and "
+                    "implementation quality of meaningful projects."
                 ),
             ),
 
@@ -152,8 +140,8 @@ class GitHubScorer:
                     1,
                 ),
                 rationale=(
-                    "Rewards meaningful project depth while "
-                    "applying diminishing returns to quantity."
+                    "Measures the depth of the portfolio based "
+                    "on the number of meaningful projects."
                 ),
             ),
 
@@ -174,8 +162,8 @@ class GitHubScorer:
                     1,
                 ),
                 rationale=(
-                    "Based on actual commit history, recency, "
-                    "and development consistency."
+                    "Measures development activity and consistency "
+                    "without treating inactivity as poor project quality."
                 ),
             ),
 
@@ -185,8 +173,8 @@ class GitHubScorer:
                     1,
                 ),
                 rationale=(
-                    "Based on actual README presence and "
-                    "useful documentation signals."
+                    "Based on README quality and useful "
+                    "documentation signals."
                 ),
             ),
 
@@ -196,8 +184,8 @@ class GitHubScorer:
                     1,
                 ),
                 rationale=(
-                    "Based on fork status and measurable "
-                    "candidate contribution."
+                    "Measures originality and demonstrated "
+                    "personal contribution."
                 ),
             ),
 
@@ -259,15 +247,57 @@ class GitHubScorer:
         if not projects:
             return 0
 
-        average = (
-            sum(
-                project.project_score
+        scores = sorted(
+            (
+                max(
+                    0,
+                    min(
+                        project.project_score,
+                        10,
+                    ),
+                )
                 for project in projects
-            )
-            / len(projects)
+            ),
+            reverse=True,
         )
 
-        return average * 10
+        # Strong projects matter more than weak experimental
+        # repositories. This prevents one mediocre repository
+        # from dragging down an otherwise strong portfolio.
+
+        weights = [
+            0.45,
+            0.30,
+            0.15,
+            0.07,
+            0.03,
+        ]
+
+        weighted_scores = []
+
+        for index, score in enumerate(scores):
+
+            weight = (
+                weights[index]
+                if index < len(weights)
+                else 0
+            )
+
+            weighted_scores.append(
+                score * 10 * weight
+            )
+
+        total_weight = sum(
+            weights[:len(scores)]
+        )
+
+        if total_weight == 0:
+            return 0
+
+        return min(
+            sum(weighted_scores) / total_weight,
+            100,
+        )
 
     @staticmethod
     def portfolio_depth(
@@ -279,37 +309,9 @@ class GitHubScorer:
 
         count = len(projects)
 
-        average_quality = (
-            sum(
-                project.project_score
-                for project in projects
-            )
-            / count
-        )
-
-        # Quality multiplier.
-        #
-        # 10/10 projects get the full quantity value.
-        # Weak projects receive progressively less depth credit.
-
-        quality_multiplier = (
-            0.65
-            + (
-                0.35
-                * (
-                    average_quality / 10
-                )
-            )
-        )
-
-        # Diminishing returns.
-        #
-        # 1 -> 55
-        # 2 -> ~72
-        # 3 -> ~82
-        # 4 -> ~88
-        # 5 -> ~92
-        # 6+ -> gradually approaches 100
+        # Portfolio depth measures quantity only.
+        # Project quality is intentionally NOT used here,
+        # preventing the same weakness from being counted twice.
 
         quantity_score = (
             100
@@ -326,8 +328,7 @@ class GitHubScorer:
         )
 
         return min(
-            quantity_score
-            * quality_multiplier,
+            quantity_score,
             100,
         )
 
@@ -341,24 +342,19 @@ class GitHubScorer:
             return 0
 
         languages = set()
-
         technologies = set()
-
         project_types = set()
 
         for project in projects:
 
             if project.project_type:
-
                 project_types.add(
                     project.project_type
                     .strip()
                     .lower()
                 )
 
-            for technology in (
-                project.technologies
-            ):
+            for technology in project.technologies:
 
                 technologies.add(
                     technology
@@ -383,23 +379,13 @@ class GitHubScorer:
                         .lower()
                     )
 
-                for language in (
-                    repository.languages
-                    .keys()
-                ):
+                for language in repository.languages.keys():
 
                     languages.add(
                         language
                         .strip()
                         .lower()
                     )
-
-        # Languages:
-        # 1 meaningful language = 35
-        # 2 = 55
-        # 3 = 70
-        # 4 = 82
-        # 5+ approaches 100
 
         language_score = min(
             100,
@@ -413,13 +399,11 @@ class GitHubScorer:
             ),
         )
 
-        # Project type diversity
         type_score = min(
             len(project_types) * 25,
             100,
         )
 
-        # Technology diversity, with diminishing returns.
         technology_score = min(
             100,
             30
@@ -467,10 +451,6 @@ class GitHubScorer:
 
             if not repository.commit_history_available:
 
-                # Fall back to pushed_at/updated_at
-                # rather than pretending we know the
-                # commit history.
-
                 timestamp = (
                     repository.pushed_at
                     or repository.updated_at
@@ -482,12 +462,10 @@ class GitHubScorer:
 
                 try:
 
-                    updated = (
-                        datetime.fromisoformat(
-                            timestamp.replace(
-                                "Z",
-                                "+00:00",
-                            )
+                    updated = datetime.fromisoformat(
+                        timestamp.replace(
+                            "Z",
+                            "+00:00",
                         )
                     )
 
@@ -577,10 +555,6 @@ class GitHubScorer:
                 active_months * 2.5,
             )
 
-            # A project with some activity should score
-            # better than a completely untouched project,
-            # but commit spam shouldn't dominate.
-
             score = min(
                 recency_score
                 + commit_score
@@ -588,12 +562,15 @@ class GitHubScorer:
                 100,
             )
 
-            # Penalize suspiciously tiny activity.
-            if yearly == 0:
+            # IMPORTANT:
+            # Do not cap the score simply because there were
+            # zero commits in the last year. A completed project
+            # can legitimately be inactive.
 
-                score = min(
+            if yearly == 0:
+                score = max(
                     score,
-                    20,
+                    35,
                 )
 
             project_scores.append(
@@ -717,7 +694,6 @@ class GitHubScorer:
             or "https://"
             in lower
         ):
-
             score += 5
 
         return min(

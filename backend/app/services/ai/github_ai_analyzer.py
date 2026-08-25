@@ -393,20 +393,213 @@ Examples:
 - library
 - learning_project
 
-4. Give a project score from 0 to 10.
+4. SCORE THE PROJECT FROM 0 TO 10
+
+The project_score must represent the QUALITY OF THE ACTUAL PROJECT,
+not merely the presence or absence of engineering extras.
+
+Evaluate the project using this rubric:
+
+A. TECHNICAL CHALLENGE — 20%
+How technically difficult is the actual problem being solved?
 
 Consider:
+- algorithmic complexity
+- ML/AI complexity where applicable
+- backend/system complexity
+- data processing complexity
+- architectural challenges
+- external API/service integration
+- state management
+- non-trivial engineering constraints
 
-- technical complexity
-- implementation depth
-- completeness
-- engineering practices
-- testing
-- architecture
-- integrations
-- deployment
-- originality
-- real-world usefulness
+B. IMPLEMENTATION DEPTH — 20%
+How much meaningful implementation exists?
+
+Consider:
+- amount of substantive implementation
+- business/application logic
+- model implementation
+- data pipelines
+- API implementation
+- reusable modules
+- error handling
+- actual functionality
+
+Do NOT equate repository size with implementation depth.
+
+C. ARCHITECTURE & SYSTEM DESIGN — 15%
+Evaluate how thoughtfully the system is structured.
+
+Consider:
+- modularity
+- separation of concerns
+- service boundaries
+- reusable components
+- data flow
+- API structure
+- maintainability
+- appropriate technology choices
+
+D. FUNCTIONAL COMPLETENESS — 15%
+How complete is the implemented project?
+
+Consider:
+- whether the main stated problem is actually solved
+- whether core workflows work end-to-end
+- whether major implemented components connect correctly
+- whether the repository represents a usable system
+
+A prototype can score highly if the implemented prototype is
+technically substantial and functional.
+
+Do NOT require production deployment for a high score.
+
+E. INTEGRATIONS & TECHNICAL SOPHISTICATION — 10%
+
+Reward meaningful integration of:
+- external APIs
+- LLMs
+- databases
+- authentication
+- ML models
+- third-party services
+- distributed/system components
+- frontend/backend integration
+- data pipelines
+
+Only reward integrations supported by repository evidence.
+
+F. ENGINEERING MATURITY — 10%
+
+Consider:
+- automated testing
+- dependency management
+- configuration
+- logging
+- error handling
+- CI/CD
+- Docker/containerization
+- documentation
+- code organization
+
+IMPORTANT:
+
+Missing engineering practices should reduce THIS dimension,
+not destroy the project's technical quality.
+
+For example:
+
+A technically sophisticated project with no tests may still
+score highly overall.
+
+G. ORIGINALITY & OWNERSHIP — 5%
+
+Consider:
+- original problem selection
+- meaningful personal implementation
+- unique features
+- non-trivial modifications to existing work
+
+Tutorials and nearly untouched forks should score poorly here.
+
+H. REAL-WORLD USEFULNESS — 5%
+
+Consider:
+- practical problem solved
+- usefulness to an actual user
+- applicability outside a tutorial setting
+- meaningful automation or productivity value
+
+--------------------------------------------------
+SCORING CALIBRATION
+--------------------------------------------------
+
+Use the following anchors:
+
+9.0–10.0:
+Exceptional student/early-career project.
+Substantial technical challenge, deep implementation,
+strong architecture, meaningful functionality and clear
+ownership.
+
+8.0–8.9:
+Very strong project.
+Clearly beyond a basic tutorial and demonstrates several
+strong engineering capabilities.
+
+7.0–7.9:
+Strong project.
+Meaningful implementation with good technical depth,
+but noticeable limitations in maturity, completeness,
+or sophistication.
+
+6.0–6.9:
+Solid project.
+Clearly functional and meaningful, but relatively standard
+or limited in depth.
+
+5.0–5.9:
+Moderate project.
+Works and demonstrates useful skills, but implementation
+or technical depth is limited.
+
+4.0–4.9:
+Weak project.
+Some meaningful implementation exists, but the project is
+mostly basic, incomplete, highly tutorial-like, or shallow.
+
+0.0–3.9:
+Very weak/non-meaningful portfolio project.
+Primarily tutorial material, trivial implementation,
+placeholder work, or extremely incomplete.
+
+IMPORTANT CALIBRATION RULES:
+
+1. A missing test suite does NOT automatically make a project
+   low quality.
+
+2. A missing Dockerfile does NOT automatically make a project
+   low quality.
+
+3. A project does NOT need production deployment to score 8+.
+
+4. A student project can score 8+ if the implementation itself
+   demonstrates substantial technical ability.
+
+5. "Prototype" is a project stage, NOT a quality score.
+   A sophisticated prototype can score 8–9.
+
+6. "Completed" does not automatically mean high quality.
+
+7. Recent commits do not automatically mean high quality.
+
+8. Inactivity does not automatically mean low quality if the
+   project appears complete.
+
+9. Do not penalize the same missing feature multiple times.
+
+10. Missing evidence means "unknown", not "false".
+
+11. Do not assume that the absence of a README claim means the
+    feature does not exist if repository evidence supports it.
+
+12. Do not reward README claims unless implementation evidence
+    supports them.
+
+13. Do not compare a machine-learning project directly against
+    a web application using superficial technology counts.
+
+14. Judge each project according to what it is trying to accomplish.
+
+15. A technically sophisticated project with imperfect engineering
+    maturity should score higher than a polished but trivial project.
+
+16. Do not artificially lower scores to make the portfolio appear
+    more critical or realistic.
+
+The final project_score must reflect the quality of demonstrated
+engineering work, not the number of missing best-practice checkboxes.
 
 Do NOT treat planned features as implemented.
 

@@ -213,274 +213,216 @@ class UnifiedService:
         skill: str,
     ) -> str:
 
-        if not isinstance(
-            skill,
-            str,
+        if not isinstance(skill, str):
+            return ""
+
+        cleaned = " ".join(
+            skill.strip().split()
+        ).lower()
+
+        if not cleaned:
+            return ""
+
+        # Reject evidence/prose accidentally returned as a skill.
+        if len(cleaned) > 70 or len(cleaned.split()) > 7:
+            return ""
+
+        prose_prefixes = (
+            "practical knowledge of ",
+            "knowledge of ",
+            "knowledge about ",
+            "experience with ",
+            "experience in ",
+            "experience using ",
+            "proficient in ",
+            "proficiency in ",
+            "familiar with ",
+            "working knowledge of ",
+            "understanding of ",
+            "usage of ",
+            "use of ",
+            "used for ",
+            "used in ",
+            "ability to ",
+            "worked with ",
+            "worked on ",
+            "developed using ",
+            "built using ",
+            "implemented using ",
+            "integration using ",
+            "integration with ",
+            "development using ",
+            "development with ",
+        )
+
+        if cleaned.startswith(prose_prefixes):
+            return ""
+
+        prose_phrases = (
+            "verified via",
+            "verified through",
+            "demonstrated through",
+            "demonstrated via",
+            "supported by",
+            "shown through",
+            "shown via",
+            "as demonstrated",
+            "as evidenced",
+            "project dependencies",
+            "repository dependencies",
+            "repository implementation",
+            "project implementation",
+            "for model training",
+            "for training and prototyping",
+            "used for training",
+        )
+
+        if any(
+            phrase in cleaned
+            for phrase in prose_phrases
         ):
             return ""
 
+        if cleaned.endswith((".", "!", "?")):
+            return ""
+
+        if cleaned.count(",") >= 3 or cleaned.count(";") >= 2:
+            return ""
+
         aliases = {
-
-            # ------------------------------------------
             # Programming languages
-            # ------------------------------------------
-
             "python3": "python",
             "python": "python",
-
             "cpp": "c++",
             "c plus plus": "c++",
             "c++": "c++",
-
             "javascript": "javascript",
             "js": "javascript",
-
             "typescript": "typescript",
             "ts": "typescript",
-
             "java": "java",
-
             "c": "c",
-
             "golang": "go",
             "go": "go",
-
             "rust": "rust",
-
             "kotlin": "kotlin",
-
             "swift": "swift",
 
-            # ------------------------------------------
-            # Frontend
-            # ------------------------------------------
-
+            # Frontend / backend
             "html5": "html",
             "html": "html",
-
             "css3": "css",
             "css": "css",
-
             "react.js": "react",
             "reactjs": "react",
             "react": "react",
-
             "next.js": "next.js",
             "nextjs": "next.js",
-
             "node.js": "node.js",
             "nodejs": "node.js",
-
-            # ------------------------------------------
-            # Backend
-            # ------------------------------------------
-
             "fast api": "fastapi",
             "fastapi": "fastapi",
-
             "flask": "flask",
-
             "django": "django",
-
             "spring boot": "spring boot",
-
             "express.js": "express",
             "expressjs": "express",
             "express": "express",
 
-            # ------------------------------------------
             # AI / ML
-            # ------------------------------------------
-
             "ml": "machine learning",
-            "machine learning": (
-                "machine learning"
-            ),
-
+            "machine learning": "machine learning",
             "dl": "deep learning",
-            "deep learning": (
-                "deep learning"
-            ),
-
-            "ai": (
-                "artificial intelligence (ai)"
-            ),
-
-            "artificial intelligence": (
-                "artificial intelligence (ai)"
-            ),
-
-            "artificial intelligence (ai)": (
-                "artificial intelligence (ai)"
-            ),
-
+            "deep learning": "deep learning",
+            "ai": "artificial intelligence (ai)",
+            "artificial intelligence": "artificial intelligence (ai)",
+            "artificial intelligence (ai)": "artificial intelligence (ai)",
+            "nlp": "natural language processing",
+            "natural language processing": "natural language processing",
+            "computer vision": "computer vision",
             "scikit learn": "scikit-learn",
             "sklearn": "scikit-learn",
             "scikit-learn": "scikit-learn",
-
             "tensorflow": "tensorflow",
-
             "pytorch": "pytorch",
-
             "keras": "keras",
-
             "xg boost": "xgboost",
             "xgboost": "xgboost",
-
             "cat boost": "catboost",
             "catboost": "catboost",
-
             "numpy": "numpy",
             "pandas": "pandas",
-
             "matplotlib": "matplotlib",
             "seaborn": "seaborn",
 
-            # ------------------------------------------
             # Databases
-            # ------------------------------------------
-
             "postgres": "postgresql",
             "postgresql": "postgresql",
-
             "mysql": "mysql",
-
             "mongodb": "mongodb",
-
+            "mongo": "mongodb",
             "sql": "sql",
-
             "redis": "redis",
 
-            # ------------------------------------------
             # Cloud / DevOps
-            # ------------------------------------------
-
             "docker": "docker",
-
             "kubernetes": "kubernetes",
-
+            "k8s": "kubernetes",
             "aws": "aws",
-
             "gcp": "google cloud",
             "google cloud": "google cloud",
-
             "azure": "azure",
-
             "render": "render",
-
-            # ------------------------------------------
-            # Developer tools
-            # ------------------------------------------
-
             "git": "git",
             "github": "github",
-
             "github actions": "github actions",
-
             "jenkins": "jenkins",
-
             "ci/cd": "ci/cd",
-
             "linux": "linux",
-
             "bash": "bash",
 
-            # ------------------------------------------
             # APIs
-            # ------------------------------------------
-
             "rest api": "rest api",
             "rest apis": "rest api",
             "rest": "rest api",
-
             "api": "api",
 
-            # ------------------------------------------
             # DSA
-            # ------------------------------------------
-
             "dsa": "dsa",
-
-            "data structure": (
-                "data structures"
-            ),
-
-            "data structures": (
-                "data structures"
-            ),
-
+            "data structure": "data structures",
+            "data structures": "data structures",
             "algorithm": "algorithms",
             "algorithms": "algorithms",
-
             "array": "arrays",
             "arrays": "arrays",
-
             "string": "strings",
             "strings": "strings",
-
             "hashmap": "hash table",
             "hash map": "hash table",
             "hash table": "hash table",
-
             "stack": "stack",
             "queue": "queue",
-
             "linked list": "linked list",
-
             "binary search": "binary search",
-
             "sorting": "sorting",
-
             "two pointers": "two pointers",
-
             "sliding window": "sliding window",
-
             "tree": "trees",
             "trees": "trees",
-
             "graph": "graphs",
             "graphs": "graphs",
-
-            "heap": (
-                "heap / priority queue"
-            ),
-
-            "priority queue": (
-                "heap / priority queue"
-            ),
-
-            "heap / priority queue": (
-                "heap / priority queue"
-            ),
-
+            "heap": "heap / priority queue",
+            "priority queue": "heap / priority queue",
+            "heap / priority queue": "heap / priority queue",
             "greedy": "greedy",
-
-            "dynamic programming": (
-                "dynamic programming"
-            ),
-
+            "dynamic programming": "dynamic programming",
             "dp": "dynamic programming",
-
             "backtracking": "backtracking",
-
             "recursion": "recursion",
-
-            "bit manipulation": (
-                "bit manipulation"
-            ),
+            "bit manipulation": "bit manipulation",
         }
 
-        cleaned = (
-            " ".join(
-                skill.strip().split()
-            )
-            .lower()
-        )
-
-        return aliases.get(
-            cleaned,
-            cleaned,
-        )
+        return aliases.get(cleaned, cleaned)
 
     @classmethod
     def _normalize_skills(
@@ -589,107 +531,43 @@ class UnifiedService:
 
         skills = []
 
-        # --------------------------------------------------
-        # Explicit demonstrated skills
-        # --------------------------------------------------
+        # Explicit AI-detected demonstrations.
+        for item in analysis.demonstrated_skills or []:
+            value = (
+                item
+                if isinstance(item, str)
+                else getattr(item, "skill", None)
+            )
+            if value:
+                skills.append(value)
 
-        for item in (
-            analysis.demonstrated_skills
-            or []
-        ):
-
-            if isinstance(
-                item,
-                str,
-            ):
-
-                skills.append(
-                    item
-                )
-
-            else:
-
-                value = getattr(
-                    item,
-                    "skill",
-                    None,
-                )
-
-                if value:
-                    skills.append(
-                        value
-                    )
-
-        # --------------------------------------------------
-        # Technical strengths
-        # --------------------------------------------------
-
-        for item in (
-            analysis.technical_strengths
-            or []
-        ):
-
+        # Technical strengths are useful, but only concise
+        # skill-like values survive _normalize_skill().
+        for item in analysis.technical_strengths or []:
             if item:
-                skills.append(
-                    item
-                )
+                skills.append(item)
 
-        # --------------------------------------------------
-        # Technology evidence
-        #
-        # Only use medium/high-confidence evidence.
-        # README-only low-confidence claims should NOT
-        # become demonstrated GitHub skills.
-        # --------------------------------------------------
+        # Project technology evidence is the strongest
+        # repository-level source.
+        for project in analysis.projects or []:
+            for technology in project.technology_evidence or []:
+                confidence = str(
+                    technology.confidence
+                ).lower().strip()
 
-        for project in (
-            analysis.projects
-            or []
-        ):
+                if confidence in {"high", "medium"}:
+                    if technology.technology:
+                        skills.append(
+                            technology.technology
+                        )
 
-            for technology in (
-                project.technology_evidence
-                or []
-            ):
-
-                confidence = (
-                    str(
-                        technology.confidence
-                    )
-                    .lower()
-                    .strip()
-                )
-
-                if confidence not in {
-                    "high",
-                    "medium",
-                }:
-
-                    continue
-
-                if technology.technology:
-
-                    skills.append(
-                        technology.technology
-                    )
-
-            # --------------------------------------------------
-            # Backward compatibility with the old field.
-            # --------------------------------------------------
-
-            for technology in (
-                project.technologies
-                or []
-            ):
-
+            # Legacy compatibility, still filtered by the
+            # strict normalizer.
+            for technology in project.technologies or []:
                 if technology:
-                    skills.append(
-                        technology
-                    )
+                    skills.append(technology)
 
-        return cls._normalize_skills(
-            skills
-        )
+        return cls._normalize_skills(skills)
 
     # ==================================================
     # LEETCODE SKILLS
@@ -706,45 +584,20 @@ class UnifiedService:
 
         skills = []
 
-        # --------------------------------------------------
-        # Languages
-        # --------------------------------------------------
+        # Languages are directly demonstrated by LeetCode work.
+        skills.extend(analysis.languages or [])
 
-        skills.extend(
-            analysis.languages
-            or []
-        )
+        # Only established strengths count as demonstrated.
+        skills.extend(analysis.strongest_skills or [])
+        skills.extend(analysis.strong_areas or [])
 
-        # --------------------------------------------------
-        # Strongest skills
-        # --------------------------------------------------
+        # IMPORTANT:
+        # developing_areas are intentionally excluded here.
+        # They remain useful for LeetCode analysis, but a
+        # developing area should not become a demonstrated
+        # career skill.
 
-        skills.extend(
-            analysis.strongest_skills
-            or []
-        )
-
-        # --------------------------------------------------
-        # Strong areas
-        # --------------------------------------------------
-
-        skills.extend(
-            analysis.strong_areas
-            or []
-        )
-
-        # --------------------------------------------------
-        # Developing areas
-        # --------------------------------------------------
-
-        skills.extend(
-            analysis.developing_areas
-            or []
-        )
-
-        return cls._normalize_skills(
-            skills
-        )
+        return cls._normalize_skills(skills)
 
     # ==================================================
     # SKILL-SOURCE RELEVANCE

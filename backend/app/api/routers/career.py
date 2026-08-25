@@ -79,11 +79,13 @@ async def analyze_career(
 
     except Exception as exc:
 
+        import traceback
+
+        traceback.print_exc()
+
         raise HTTPException(
             status_code=500,
-            detail=(
-                "Failed to upload resume."
-            ),
+            detail="Failed to upload resume.",
         ) from exc
 
     resume_id = (
@@ -137,11 +139,15 @@ async def analyze_career(
 
     except Exception as exc:
 
+        import traceback
+
+        traceback.print_exc()
+
         raise HTTPException(
             status_code=500,
             detail=(
-                "Career intelligence "
-                "pipeline failed."
+                f"Career intelligence "
+                f"pipeline failed: {exc}"
             ),
         ) from exc
 
@@ -154,9 +160,11 @@ async def analyze_career(
 
         "file": {
             "file_id": resume_id,
+
             "filename": (
                 upload_result.filename
             ),
+
             "original_filename": (
                 upload_result.original_filename
             ),

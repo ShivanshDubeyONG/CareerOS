@@ -808,18 +808,14 @@ const handleAuth = async (event) => {
           </div>
 
           <h1>
-            Understand your
+            Know your career.
             <br />
-            <em>career. Completely.</em>
+            <em>Not just your resume.</em>
           </h1>
 
           <p className="hero-copy">
-            Upload your resume once.
-            CareerOS discovers your
-            professional footprint and
-            builds an evidence-backed
-            career profile across your
-            sources.
+            CareerOS connects the work you’ve done across your
+            professional profiles and turns it into one clear picture.
           </p>
 
           <div className="upload-wrapper">
@@ -1215,54 +1211,89 @@ const handleAuth = async (event) => {
                   </span>
 
                   <h2>
-                    Skills, with proof.
+                    Your skills, mapped.
                   </h2>
                 </div>
               </div>
 
               <span className="section-count">
-                {unifiedSkills.length} signals
+                {unifiedSkills.length} skills
               </span>
             </div>
 
             <div className="skills-layout">
-              <div className="skills-feature">
-                <div className="skills-feature-top">
-                  <div>
-                    <span className="micro-label">
-                      STRONGEST EVIDENCE
-                    </span>
+            <div className="skills-feature">
+            <div className="skills-feature-top">
+            <div>
+              <span className="micro-label">
+                SKILL INVENTORY
+              </span>
 
-                    <h3>
-                      {strongestSkills.length}
-                    </h3>
+              <h3>
+                {unifiedSkills.length}
+              </h3>
 
-                    <p>
-                      skills supported by
-                      independent evidence
-                    </p>
-                  </div>
+              <p>
+                Skills CareerOS found across your resume,
+                LinkedIn, GitHub and LeetCode.
+              </p>
+            </div>
 
-                  <ShieldCheck size={25} />
-                </div>
+            <ShieldCheck size={25} />
+          </div>
 
-                <div className="skill-cloud">
-                  {strongestSkills
-                    .slice(0, 8)
-                    .map((skill) => (
-                      <span
-                        className="skill-chip strong"
-                        key={skill.skill}
-                      >
-                        <Check size={11} />
-                        {titleCase(
-                          skill.skill
-                        )}
-                      </span>
-                    ))}
-                </div>
-              </div>
+            <div className="skill-summary">
+              <span>
+                <strong>{unifiedSkills.length}</strong>
+                {" "}identified
+              </span>
 
+              <span>
+                <strong>{strongestSkills.length}</strong>
+                {" "}strong evidence
+              </span>
+
+              <span>
+                <strong>
+                  {
+                    unifiedSkills.filter(
+                      (skill) =>
+                        skill.status === "demonstrated"
+                    ).length
+                  }
+                </strong>
+                {" "}demonstrated
+              </span>
+            </div>
+
+            <div className="skill-cloud">
+              {unifiedSkills.map((skill) => (
+                <span
+                  className={`skill-chip ${
+                    skill.status === "strongly_supported"
+                      ? "strong"
+                      : ""
+                  }`}
+                  key={skill.skill}
+                  title={
+                    skill.status === "strongly_supported"
+                      ? "Strong multi-source evidence"
+                      : skill.status === "demonstrated"
+                        ? "Demonstrated through project/source evidence"
+                        : skill.status === "claimed_only"
+                          ? "Claimed in a profile or resume"
+                          : "Limited evidence"
+                  }
+                >
+                  {skill.status === "strongly_supported" && (
+                    <Check size={11} />
+                  )}
+
+                  {titleCase(skill.skill)}
+                </span>
+              ))}
+            </div>
+          </div>
               <div className="evidence-list">
                 {topSkills
                   .slice(0, 6)
@@ -1884,3 +1915,4 @@ const handleAuth = async (event) => {
 }
 
 export default App;
+
