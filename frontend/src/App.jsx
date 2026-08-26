@@ -355,8 +355,40 @@ const handleAuth = async (event) => {
 
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
   const [error, setError] = useState(null);
   const [analysis, setAnalysis] = useState(null);
+
+  useEffect(() => {
+    if (!loading) {
+      setAnalysisProgress(0);
+      return;
+    }
+
+    setAnalysisProgress(5);
+
+    const stages = [
+      { progress: 20, delay: 1000 },
+      { progress: 38, delay: 2500 },
+      { progress: 55, delay: 5000 },
+      { progress: 72, delay: 8000 },
+      { progress: 84, delay: 12000 },
+      { progress: 92, delay: 18000 },
+      { progress: 97, delay: 28000 },
+    ];
+
+    const timers = stages.map(({ progress, delay }) =>
+      setTimeout(() => {
+        setAnalysisProgress((current) =>
+          Math.max(current, progress)
+        );
+      }, delay)
+    );
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
+  }, [loading]);
 
   const handleFile = (selectedFile) => {
     if (!selectedFile) return;
@@ -438,6 +470,7 @@ const handleAuth = async (event) => {
         data
       );
 
+      setAnalysisProgress(100);
       setAnalysis(data);
     } catch (err) {
       console.error(
@@ -887,7 +920,7 @@ const handleAuth = async (event) => {
                         size={15}
                         className="spin"
                       />
-                      Analyzing...
+                      {analysisProgress}%
                     </>
                   ) : (
                     <>
@@ -896,6 +929,24 @@ const handleAuth = async (event) => {
                     </>
                   )}
                 </button>
+
+                {loading && (
+                  <div className="analysis-status">
+                    <span>
+                      {analysisProgress < 25
+                        ? "Reading your resume..."
+                        : analysisProgress < 50
+                          ? "Building your career profile..."
+                          : analysisProgress < 75
+                            ? "Analyzing skills and experience..."
+                            : analysisProgress < 95
+                              ? "Cross-checking career signals..."
+                              : "Finalizing your career intelligence..."}
+                    </span>
+
+                    <strong>{analysisProgress}%</strong>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1915,4 +1966,3 @@ const handleAuth = async (event) => {
 }
 
 export default App;
-
