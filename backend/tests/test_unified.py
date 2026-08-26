@@ -311,155 +311,82 @@ def build_leetcode():
     )
 
 
-def main():
-
-    print("=" * 60)
-    print("CAREEROS UNIFIED EVIDENCE TEST")
-    print("=" * 60)
-
+def build_unified_profile():
     resume = build_resume()
+    github_profile = build_github_profile()
+    github_analysis = build_github_analysis()
+    linkedin_profile, linkedin_analysis = build_linkedin()
+    leetcode_analysis = build_leetcode()
 
-    github_profile = (
-        build_github_profile()
+    return unified_service.build_profile(
+        resume=resume,
+        github_profile=github_profile,
+        github_analysis=github_analysis,
+        linkedin_profile=linkedin_profile,
+        linkedin_analysis=linkedin_analysis,
+        leetcode_analysis=leetcode_analysis,
     )
 
-    github_analysis = (
-        build_github_analysis()
+
+def test_unified_profile_builds():
+    unified = build_unified_profile()
+
+    assert unified is not None
+
+
+def test_all_sources_are_reconciled():
+    unified = build_unified_profile()
+
+    assert unified.source_status["resume"] is True
+    assert unified.source_status["github"] is True
+    assert unified.source_status["linkedin"] is True
+    assert unified.source_status["leetcode"] is True
+
+
+def test_skill_evidence_is_generated():
+    unified = build_unified_profile()
+
+    assert unified.skill_evidence
+
+    skills = {
+        skill.skill
+        for skill in unified.skill_evidence
+    }
+
+    assert "python" in skills
+
+
+def test_skill_evidence_tracks_sources():
+    unified = build_unified_profile()
+
+    python_skill = next(
+        skill
+        for skill in unified.skill_evidence
+        if skill.skill == "python"
     )
 
-    linkedin_profile, linkedin_analysis = (
-        build_linkedin()
-    )
+    assert python_skill.resume_claimed is True
+    assert python_skill.github_demonstrated is True
 
-    leetcode_analysis = (
-        build_leetcode()
-    )
 
-    print("\nBuilding unified profile...")
+def test_project_evidence_is_generated():
+    unified = build_unified_profile()
 
-    unified = (
-        unified_service.build_profile(
-            resume=resume,
-            github_profile=github_profile,
-            github_analysis=github_analysis,
-            linkedin_profile=linkedin_profile,
-            linkedin_analysis=linkedin_analysis,
-            leetcode_analysis=leetcode_analysis,
-        )
-    )
+    assert unified.project_evidence
 
-    print("Unified profile built.")
+    project_names = {
+        project.name
+        for project in unified.project_evidence
+    }
 
-    print("\n" + "=" * 60)
-    print("SOURCE STATUS")
-    print("=" * 60)
+    assert "CareerOS" in project_names
 
-    for source, connected in (
-        unified.source_status.items()
-    ):
-        print(
-            f"{source}: "
-            f"{'CONNECTED' if connected else 'MISSING'}"
-        )
 
-    print("\n" + "=" * 60)
-    print("SKILL EVIDENCE")
-    print("=" * 60)
-
-    for skill in unified.skill_evidence:
-
-        print(
-            f"\n{skill.skill}"
-        )
-
-        print(
-            f"  Resume: "
-            f"{skill.resume_claimed}"
-        )
-
-        print(
-            f"  LinkedIn: "
-            f"{skill.linkedin_claimed}"
-        )
-
-        print(
-            f"  GitHub: "
-            f"{skill.github_demonstrated}"
-        )
-
-        print(
-            f"  LeetCode: "
-            f"{skill.leetcode_demonstrated}"
-        )
-
-        print(
-            f"  Status: "
-            f"{skill.status}"
-        )
-
-    print("\n" + "=" * 60)
-    print("PROJECT RECONCILIATION")
-    print("=" * 60)
-
-    for project in unified.project_evidence:
-
-        print(
-            f"\n{project.name}"
-        )
-
-        print(
-            f"  GitHub: "
-            f"{project.github_present}"
-        )
-
-        print(
-            f"  LinkedIn: "
-            f"{project.linkedin_present}"
-        )
-
-        print(
-            f"  Resume: "
-            f"{project.resume_present}"
-        )
-
-        print(
-            f"  Status: "
-            f"{project.status}"
-        )
-
-        if project.finding:
-            print(
-                f"  Finding: "
-                f"{project.finding}"
-            )
-
-    print("\n" + "=" * 60)
-    print("CROSS-SOURCE FINDINGS")
-    print("=" * 60)
-
-    if not unified.findings:
-        print("None")
+def test_cross_source_findings_are_structured():
+    unified = build_unified_profile()
 
     for finding in unified.findings:
-
-        print(
-            f"\n[{finding.severity}] "
-            f"{finding.finding_type}"
-        )
-
-        print(
-            f"  Subject: "
-            f"{finding.subject}"
-        )
-
-        print(
-            f"  {finding.message}"
-        )
-
-    print("\n" + "=" * 60)
-    print("UNIFIED EVIDENCE TEST COMPLETE")
-    print("=" * 60)
-
-
-if __name__ == "__main__":
-    main()
+        assert finding.severity
+        assert finding.finding_type
+        assert finding.subject
+        assert finding.message
