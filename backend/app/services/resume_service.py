@@ -1,8 +1,8 @@
 import os
 import uuid
 
-import fitz
 from fastapi import HTTPException, UploadFile
+import pymupdf
 
 from app.schemas.resume_schema import (
     ResumeAnalysisResponse,
@@ -98,7 +98,7 @@ class ResumeService:
 
         if extension == ".pdf":
 
-            doc = fitz.open(file_path)
+            doc = pymupdf.open(file_path)
 
             text = ""
 

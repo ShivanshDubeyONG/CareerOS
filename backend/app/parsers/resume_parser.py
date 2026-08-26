@@ -1,5 +1,5 @@
 import os
-import fitz
+import pymupdf
 from docx import Document
 
 
@@ -11,7 +11,7 @@ class ResumeParser:
 
         if extension == ".pdf":
 
-            doc = fitz.open(file_path)
+            doc = pymupdf.open(file_path)
 
             text = ""
 
@@ -43,7 +43,7 @@ class ResumeParser:
         if extension != ".pdf":
             return []
 
-        doc = fitz.open(file_path)
+        doc = pymupdf.open(file_path)
 
         links = []
 
