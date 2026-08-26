@@ -1,7 +1,7 @@
 
 # CareerOS
 
-> **Your career data is scattered everywhere. CareerOS puts the pieces together.**
+> *Your career data is scattered everywhere. CareerOS puts the pieces together.*
 
 CareerOS is an AI-powered career intelligence platform that analyzes a candidate's professional footprint across multiple sources and turns it into an evidence-backed career profile.
 
