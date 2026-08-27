@@ -44,7 +44,6 @@ class CareerAnalysisService:
         self.github_client = GitHubClient()
         self.github_analyzer = GitHubAnalyzer()
         self.github_ai = GitHubAIAnalyzer()
-
         self.leetcode_client = LeetCodeClient()
 
     # ==================================================
@@ -111,6 +110,10 @@ class CareerAnalysisService:
             owner = repo["owner"]["login"]
             repo_name = repo["name"]
 
+            # ------------------------------------------
+            # Languages
+            # ------------------------------------------
+
             try:
 
                 languages = (
@@ -125,6 +128,10 @@ class CareerAnalysisService:
 
                 languages = {}
 
+            # ------------------------------------------
+            # README
+            # ------------------------------------------
+
             try:
 
                 readme = (
@@ -138,6 +145,10 @@ class CareerAnalysisService:
             except Exception:
 
                 readme = None
+
+            # ------------------------------------------
+            # Dependency files
+            # ------------------------------------------
 
             dependency_data = {}
             dependency_names = []
@@ -189,78 +200,195 @@ class CareerAnalysisService:
                 set(dependencies)
             )
 
+            # ------------------------------------------
+            # Repository structure
+            # ------------------------------------------
+            #
+            # Pull the complete repository tree so the
+            # GitHub analyzer can see:
+            #
+            # - source directories
+            # - tests
+            # - configuration files
+            # - Docker files
+            # - frontend structure
+            # - actual file paths
+            #
+            # This is important because the AI analyzer
+            # should reason from the real repository
+            # architecture rather than README/language
+            # statistics alone.
+            # ------------------------------------------
+
+            file_paths = []
+
+            try:
+
+                file_paths = (
+                    self.github_client
+                    .get_repository_tree(
+                        owner,
+                        repo_name,
+                        repo.get(
+                            "default_branch"
+                        ) or "main",
+                    )
+                )
+
+            except Exception:
+
+                file_paths = []
+
+            structure = (
+                self.github_analyzer
+                .analyze_repository_structure(
+                    file_paths
+                )
+            )
+
+            # ------------------------------------------
+            # Build repository model
+            # ------------------------------------------
+
             repository = GitHubRepository(
+
                 name=repo["name"],
+
                 full_name=repo["full_name"],
+
                 description=repo.get(
                     "description"
                 ),
+
                 url=repo["html_url"],
+
                 language=repo.get(
                     "language"
                 ),
+
                 languages=languages,
+
                 stars=repo.get(
                     "stargazers_count",
                     0,
                 ),
+
                 forks=repo.get(
                     "forks_count",
                     0,
                 ),
+
                 topics=repo.get(
                     "topics",
                     [],
                 ),
+
                 is_fork=repo.get(
                     "fork",
                     False,
                 ),
+
                 is_archived=repo.get(
                     "archived",
                     False,
                 ),
+
                 default_branch=repo.get(
                     "default_branch"
                 ),
+
                 created_at=repo.get(
                     "created_at"
                 ),
+
                 updated_at=repo.get(
                     "updated_at"
                 ),
+
                 readme=readme,
+
                 dependencies=dependencies,
+
                 dependency_files=dependency_names,
+
+                # --------------------------------------
+                # Repository structure evidence
+                # --------------------------------------
+
+                file_paths=file_paths,
+
+                source_directories=structure[
+                    "source_directories"
+                ],
+
+                test_files=structure[
+                    "test_files"
+                ],
+
+                config_files=structure[
+                    "config_files"
+                ],
+
+                has_docker=structure[
+                    "has_docker"
+                ],
+
+                has_frontend=structure[
+                    "has_frontend"
+                ],
+
+                has_tests=structure[
+                    "has_tests"
+                ],
             )
 
             repositories.append(
                 repository
             )
 
+        # ------------------------------------------
+        # GitHub profile
+        # ------------------------------------------
+
         github_profile = GitHubProfile(
+
             username=profile_data["login"],
-            name=profile_data.get("name"),
-            bio=profile_data.get("bio"),
+
+            name=profile_data.get(
+                "name"
+            ),
+
+            bio=profile_data.get(
+                "bio"
+            ),
+
             profile_url=profile_data[
                 "html_url"
             ],
+
             public_repository_count=(
                 profile_data.get(
                     "public_repos",
                     0,
                 )
             ),
+
             followers=profile_data.get(
                 "followers",
                 0,
             ),
+
             following=profile_data.get(
                 "following",
                 0,
             ),
+
             repositories=repositories,
         )
+
+        # ------------------------------------------
+        # AI analysis
+        # ------------------------------------------
 
         analysis = self.github_ai.analyze(
             github_profile
