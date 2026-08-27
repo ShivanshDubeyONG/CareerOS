@@ -643,42 +643,115 @@ function App() {
   }, [unifiedSkills]);
 
   const careerReadiness = useMemo(() => {
-    const scores = [
-      resumeRating.overall_score,
-      githubAnalysis.projects?.length
-        ? githubAnalysis.projects.reduce(
-            (sum, item) =>
-              sum +
-              clamp(
-                item.project_score * 10
-              ),
-            0
-          ) /
-            githubAnalysis.projects.length
-        : null,
-      leetcodeAnalysis.problem_solving_score,
-      linkedinRating.overall_score,
-    ].filter(
-      (value) =>
-        value !== null &&
-        value !== undefined
+  const resumeScore =
+    Number(resumeRating.overall_score) || 0;
+
+  const projectScore =
+    githubAnalysis.projects?.length
+      ? githubAnalysis.projects.reduce(
+          (sum, item) =>
+            sum +
+            clamp(
+              item.project_score * 10
+            ),
+          0
+        ) / githubAnalysis.projects.length
+      : 0;
+
+  const leetcodeScore =
+    Number(
+      leetcodeAnalysis.problem_solving_score
+    ) || 0;
+
+  /*
+   * Professional experience is deliberately treated
+   * separately from technical projects.
+   *
+   * Projects demonstrate technical ability.
+   * Experience demonstrates exposure to real-world
+   * engineering environments.
+   */
+
+  const experienceCount =
+    Array.isArray(resumeRating.experience)
+      ? resumeRating.experience.length
+      : Array.isArray(
+          resumeRating.experience?.items
+        )
+      ? resumeRating.experience.items.length
+      : Array.isArray(
+          resumeRating.experience?.entries
+        )
+      ? resumeRating.experience.entries.length
+      : 0;
+
+  /*
+   * If the parsed resume experience is not directly
+   * available in the rating object, fall back to the
+   * actual resume profile if available.
+   */
+  const actualExperience =
+    Array.isArray(resume?.experience)
+      ? resume.experience.length
+      : experienceCount;
+
+  let experienceScore = 0;
+
+  if (actualExperience >= 3) {
+    experienceScore = 100;
+  } else if (actualExperience === 2) {
+    experienceScore = 85;
+  } else if (actualExperience === 1) {
+    experienceScore = 70;
+  }
+
+  /*
+   * Readiness measures preparedness for the professional
+   * job market, not simply technical ability.
+   *
+   * Strong student:
+   * - can score well technically
+   * - but lack of professional experience limits readiness
+   *
+   * Experienced candidate:
+   * - receives additional readiness credit for
+   *   demonstrated professional exposure
+   */
+
+  const technicalScore =
+    resumeScore * 0.30 +
+    projectScore * 0.30 +
+    leetcodeScore * 0.15;
+
+  const experienceContribution =
+    experienceScore * 0.15;
+
+  /*
+   * Small ceiling for candidates with no professional
+   * experience. This prevents a technically strong student
+   * from being represented as equally job-ready as someone
+   * with substantial real-world experience.
+   */
+  let readiness =
+    technicalScore +
+    experienceContribution;
+
+  if (actualExperience === 0) {
+    readiness = Math.min(
+      readiness,
+      68
     );
+  }
 
-    if (!scores.length) return 0;
-
-    return Math.round(
-      scores.reduce(
-        (sum, value) => sum + value,
-        0
-      ) / scores.length
-    );
-  }, [
-    resumeRating,
-    githubAnalysis,
-    leetcodeAnalysis,
-    linkedinRating,
-  ]);
-
+  return Math.round(
+    clamp(readiness)
+  );
+}, [
+  resumeRating,
+  resume,
+  githubAnalysis,
+  leetcodeAnalysis,
+]);
   const radarValues = [
   resumeRating.projects?.score ?? 70,
 
