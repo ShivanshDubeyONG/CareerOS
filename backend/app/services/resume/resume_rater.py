@@ -275,6 +275,53 @@ technical evidence should NOT receive a high score merely
 because the resume looks polished.
 
 ==================================================
+STRICT SCORE CALIBRATION
+==================================================
+
+Be conservative with numeric scores.
+
+A score of 90-100 represents an exceptional resume that would
+stand out even among strong technical candidates.
+
+A score of 85-89 represents excellent work.
+
+A score of 75-84 represents a strong resume.
+
+A score of 65-74 represents a good but clearly developing resume.
+
+A score of 55-64 represents an average/developing resume.
+
+Below 55 represents substantial weaknesses.
+
+IMPORTANT:
+
+Do NOT give a student a 90+ overall score merely because they
+have strong projects, many technical skills, or polished
+formatting.
+
+For a student or entry-level candidate with little or no
+professional experience, a strong resume will generally fall
+in the 70-85 range unless the evidence is genuinely exceptional.
+
+Professional experience should materially distinguish an
+exceptional professional resume from an exceptional student
+resume.
+
+Strong projects are valuable evidence of technical ability,
+but they are NOT equivalent to internships, employment, or
+professional experience.
+
+Do not artificially punish students for being students.
+Instead, distinguish technical strength from professional
+readiness.
+
+A high score must be earned by consistently strong evidence
+across the important dimensions.
+
+90+ should be rare.
+95+ should be extremely rare.
+100 should effectively represent an almost flawless resume.
+==================================================
 RECOMMENDATIONS
 ==================================================
 
