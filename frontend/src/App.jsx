@@ -193,11 +193,10 @@ function EvidenceCard({ skill }) {
 
 function Radar({ values }) {
   const points = [
-    [100, 16],
-    [180, 76],
-    [150, 156],
-    [50, 156],
-    [20, 76],
+    [100, 16],   // Projects
+    [176, 92],   // DSA
+    [100, 168],  // Skills
+    [24, 92],    // GitHub
   ];
 
   const center = [100, 92];
@@ -205,8 +204,14 @@ function Radar({ values }) {
   const makePolygon = (scale) =>
     points
       .map(([x, y]) => {
-        const nx = center[0] + (x - center[0]) * scale;
-        const ny = center[1] + (y - center[1]) * scale;
+        const nx =
+          center[0] +
+          (x - center[0]) * scale;
+
+        const ny =
+          center[1] +
+          (y - center[1]) * scale;
+
         return `${nx},${ny}`;
       })
       .join(" ");
@@ -215,8 +220,15 @@ function Radar({ values }) {
     .map(([x, y], index) => {
       const value = clamp(values[index]);
       const scale = value / 100;
-      const nx = center[0] + (x - center[0]) * scale;
-      const ny = center[1] + (y - center[1]) * scale;
+
+      const nx =
+        center[0] +
+        (x - center[0]) * scale;
+
+      const ny =
+        center[1] +
+        (y - center[1]) * scale;
+
       return `${nx},${ny}`;
     })
     .join(" ");
@@ -226,13 +238,15 @@ function Radar({ values }) {
       className="radar"
       viewBox="0 0 200 184"
     >
-      {[0.25, 0.5, 0.75, 1].map((scale) => (
-        <polygon
-          key={scale}
-          points={makePolygon(scale)}
-          className="radar-grid"
-        />
-      ))}
+      {[0.25, 0.5, 0.75, 1].map(
+        (scale) => (
+          <polygon
+            key={scale}
+            points={makePolygon(scale)}
+            className="radar-grid"
+          />
+        )
+      )}
 
       {points.map(([x, y], index) => (
         <line
@@ -258,10 +272,12 @@ function Radar({ values }) {
           <circle
             key={index}
             cx={
-              100 + (x - 100) * scale
+              100 +
+              (x - 100) * scale
             }
             cy={
-              92 + (y - 92) * scale
+              92 +
+              (y - 92) * scale
             }
             r="3"
             className="radar-point"
@@ -307,48 +323,50 @@ function App() {
     };
   }, []);
 
-const handleAuth = async (event) => {
-  event.preventDefault();
+  const handleAuth = async (event) => {
+    event.preventDefault();
 
-  setAuthLoading(true);
-  setAuthError("");
+    setAuthLoading(true);
+    setAuthError("");
 
-  try {
-    if (authMode === "signup") {
-      const { data, error } = await supabase.auth.signUp({
-        email: authEmail,
-        password: authPassword,
-      });
+    try {
+      if (authMode === "signup") {
+        const { data, error } =
+          await supabase.auth.signUp({
+            email: authEmail,
+            password: authPassword,
+          });
+
+        if (error) {
+          throw error;
+        }
+
+        setUser(data.user);
+        return;
+      }
+
+      const { data, error } =
+        await supabase.auth.signInWithPassword({
+          email: authEmail,
+          password: authPassword,
+        });
 
       if (error) {
         throw error;
       }
 
       setUser(data.user);
-      return;
+    } catch (error) {
+      console.error("AUTH ERROR:", error);
+
+      setAuthError(
+        error.message ||
+          "Authentication failed."
+      );
+    } finally {
+      setAuthLoading(false);
     }
-
-    const { data, error } =
-      await supabase.auth.signInWithPassword({
-        email: authEmail,
-        password: authPassword,
-      });
-
-    if (error) {
-      throw error;
-    }
-
-    setUser(data.user);
-  } catch (error) {
-    console.error("AUTH ERROR:", error);
-
-    setAuthError(
-      error.message || "Authentication failed."
-    );
-  } finally {
-    setAuthLoading(false);
-  }
-};
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -357,10 +375,22 @@ const handleAuth = async (event) => {
 
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [analysisProgress, setAnalysisProgress] =
+    useState(0);
   const [error, setError] = useState(null);
   const [analysis, setAnalysis] = useState(null);
 
+  /*
+   * --------------------------------------------------
+   * CAREER ANALYSIS PROGRESS
+   *
+   * This is intentionally a "perceived progress"
+   * indicator because the backend currently returns
+   * one final response rather than streaming stages.
+   *
+   * It stops at 99% until the real response arrives.
+   * --------------------------------------------------
+   */
   useEffect(() => {
     if (!loading) {
       setAnalysisProgress(0);
@@ -370,27 +400,81 @@ const handleAuth = async (event) => {
     setAnalysisProgress(5);
 
     const stages = [
-      { progress: 20, delay: 1000 },
-      { progress: 38, delay: 2500 },
-      { progress: 55, delay: 5000 },
-      { progress: 72, delay: 8000 },
-      { progress: 84, delay: 12000 },
-      { progress: 92, delay: 18000 },
-      { progress: 97, delay: 28000 },
+      {
+        progress: 18,
+        delay: 900,
+      },
+      {
+        progress: 31,
+        delay: 2200,
+      },
+      {
+        progress: 46,
+        delay: 4200,
+      },
+      {
+        progress: 61,
+        delay: 7000,
+      },
+      {
+        progress: 74,
+        delay: 10500,
+      },
+      {
+        progress: 84,
+        delay: 15000,
+      },
+      {
+        progress: 92,
+        delay: 22000,
+      },
+      {
+        progress: 97,
+        delay: 32000,
+      },
+      {
+        progress: 99,
+        delay: 42000,
+      },
     ];
 
-    const timers = stages.map(({ progress, delay }) =>
-      setTimeout(() => {
-        setAnalysisProgress((current) =>
-          Math.max(current, progress)
-        );
-      }, delay)
+    const timers = stages.map(
+      ({ progress, delay }) =>
+        setTimeout(() => {
+          setAnalysisProgress((current) =>
+            Math.max(current, progress)
+          );
+        }, delay)
     );
 
     return () => {
       timers.forEach(clearTimeout);
     };
   }, [loading]);
+
+  const getProgressMessage = (progress) => {
+    if (progress < 25) {
+      return "Reading your resume";
+    }
+
+    if (progress < 45) {
+      return "Mapping your experience";
+    }
+
+    if (progress < 65) {
+      return "Analyzing skills & projects";
+    }
+
+    if (progress < 85) {
+      return "Connecting career signals";
+    }
+
+    if (progress < 97) {
+      return "Cross-checking your profile";
+    }
+
+    return "Finalizing career intelligence";
+  };
 
   const handleFile = (selectedFile) => {
     if (!selectedFile) return;
@@ -404,12 +488,16 @@ const handleAuth = async (event) => {
     ];
 
     if (!validTypes.includes(selectedFile.type)) {
-      setError("Please upload a PDF or DOCX resume.");
+      setError(
+        "Please upload a PDF or DOCX resume."
+      );
       return;
     }
 
     if (selectedFile.size > 10 * 1024 * 1024) {
-      setError("Resume must be smaller than 10MB.");
+      setError(
+        "Resume must be smaller than 10MB."
+      );
       return;
     }
 
@@ -418,11 +506,15 @@ const handleAuth = async (event) => {
 
   const handleDrop = (event) => {
     event.preventDefault();
-    handleFile(event.dataTransfer.files?.[0]);
+    handleFile(
+      event.dataTransfer.files?.[0]
+    );
   };
 
   const handleInput = (event) => {
-    handleFile(event.target.files?.[0]);
+    handleFile(
+      event.target.files?.[0]
+    );
   };
 
   const analyzeCareer = async () => {
@@ -452,7 +544,8 @@ const handleAuth = async (event) => {
 
           if (errorData?.detail) {
             message =
-              typeof errorData.detail === "string"
+              typeof errorData.detail ===
+              "string"
                 ? errorData.detail
                 : JSON.stringify(
                     errorData.detail
@@ -465,13 +558,18 @@ const handleAuth = async (event) => {
         throw new Error(message);
       }
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       console.log(
         "CAREEROS ANALYSIS:",
         data
       );
 
+      /*
+       * The actual backend response has arrived,
+       * so NOW we are genuinely at 100%.
+       */
       setAnalysisProgress(100);
       setAnalysis(data);
     } catch (err) {
@@ -582,25 +680,25 @@ const handleAuth = async (event) => {
   ]);
 
   const radarValues = [
-    resumeRating.projects?.score ??
-      resumeRating.projects?.score ??
-      70,
-    leetcodeAnalysis.problem_solving_score ??
-      0,
-    resumeRating.skills?.score ?? 70,
-    linkedinRating.overall_score ?? 0,
-    githubAnalysis.projects?.length
-      ? githubAnalysis.projects.reduce(
-          (sum, project) =>
-            sum +
-            clamp(
-              project.project_score * 10
-            ),
-          0
-        ) /
-        githubAnalysis.projects.length
-      : 0,
-  ];
+  resumeRating.projects?.score ?? 70,
+
+  leetcodeAnalysis.problem_solving_score ??
+    0,
+
+  resumeRating.skills?.score ?? 70,
+
+  githubAnalysis.projects?.length
+    ? githubAnalysis.projects.reduce(
+        (sum, project) =>
+          sum +
+          clamp(
+            project.project_score * 10
+          ),
+        0
+      ) /
+      githubAnalysis.projects.length
+    : 0,
+];
 
   const sourceCounts = {
     resume: resumeRating.overall_score
@@ -648,7 +746,7 @@ const handleAuth = async (event) => {
   const dsaCoverage =
     leetcodeAnalysis.dsa_coverage || {};
 
-    if (authChecking) {
+  if (authChecking) {
     return (
       <main className="app auth-page">
         <div className="ambient ambient-one" />
@@ -658,7 +756,10 @@ const handleAuth = async (event) => {
           <div className="brand-mark">
             <Sparkles size={18} />
           </div>
-          <span>Loading CareerOS...</span>
+
+          <span>
+            Loading CareerOS...
+          </span>
         </div>
       </main>
     );
@@ -671,13 +772,18 @@ const handleAuth = async (event) => {
         <div className="ambient ambient-two" />
 
         <nav className="navbar">
-          <div className="brand">
+          {/* CLICKING CAREEROS ALWAYS RETURNS HOME */}
+          <a
+            href="/"
+            className="brand"
+            aria-label="CareerOS home"
+          >
             <div className="brand-mark">
               <Sparkles size={15} />
             </div>
 
             <span>CareerOS</span>
-          </div>
+          </a>
 
           <div className="nav-status">
             <span className="status-dot" />
@@ -687,7 +793,6 @@ const handleAuth = async (event) => {
 
         <section className="auth-container">
           <div className="auth-card">
-
             <div className="auth-icon">
               <Sparkles size={20} />
             </div>
@@ -719,7 +824,9 @@ const handleAuth = async (event) => {
                   type="email"
                   value={authEmail}
                   onChange={(e) =>
-                    setAuthEmail(e.target.value)
+                    setAuthEmail(
+                      e.target.value
+                    )
                   }
                   placeholder="you@example.com"
                   required
@@ -733,7 +840,9 @@ const handleAuth = async (event) => {
                   type="password"
                   value={authPassword}
                   onChange={(e) =>
-                    setAuthPassword(e.target.value)
+                    setAuthPassword(
+                      e.target.value
+                    )
                   }
                   placeholder="••••••••"
                   minLength={6}
@@ -784,7 +893,6 @@ const handleAuth = async (event) => {
                   : "Sign in"}
               </button>
             </div>
-
           </div>
         </section>
       </main>
@@ -802,13 +910,18 @@ const handleAuth = async (event) => {
 
       {/* NAVBAR */}
       <nav className="navbar">
-        <div className="brand">
+        {/* CLICKABLE CAREEROS HOME LOGO */}
+        <a
+          href="/"
+          className="brand"
+          aria-label="CareerOS home"
+        >
           <div className="brand-mark">
             <Sparkles size={15} />
           </div>
 
           <span>CareerOS</span>
-        </div>
+        </a>
 
         <div className="nav-right">
           {analysis && (
@@ -889,7 +1002,15 @@ const handleAuth = async (event) => {
                 </div>
               </label>
             ) : (
-              <div className="selected-card">
+              <div
+                className="selected-card"
+                style={{
+                  position: "relative",
+                  minHeight: loading
+                    ? "116px"
+                    : undefined,
+                }}
+              >
                 <div className="selected-info">
                   <div className="file-symbol">
                     <FileText size={20} />
@@ -911,10 +1032,22 @@ const handleAuth = async (event) => {
                   </div>
                 </div>
 
+                {/*
+                 * IMPORTANT:
+                 * Fixed width means the Analyze button
+                 * does NOT resize or jump when loading.
+                 */}
                 <button
                   className="analyze-button"
                   onClick={analyzeCareer}
                   disabled={loading}
+                  style={{
+                    width: "145px",
+                    minWidth: "145px",
+                    flexShrink: 0,
+                    justifyContent:
+                      "center",
+                  }}
                 >
                   {loading ? (
                     <>
@@ -922,7 +1055,7 @@ const handleAuth = async (event) => {
                         size={15}
                         className="spin"
                       />
-                      {analysisProgress}%
+                      Analyzing
                     </>
                   ) : (
                     <>
@@ -932,23 +1065,77 @@ const handleAuth = async (event) => {
                   )}
                 </button>
 
-                {loading && (
-                  <div className="analysis-status">
-                    <span>
-                      {analysisProgress < 25
-                        ? "Reading your resume..."
-                        : analysisProgress < 50
-                          ? "Building your career profile..."
-                          : analysisProgress < 75
-                            ? "Analyzing skills and experience..."
-                            : analysisProgress < 95
-                              ? "Cross-checking career signals..."
-                              : "Finalizing your career intelligence..."}
-                    </span>
-
-                    <strong>{analysisProgress}%</strong>
+                {/*
+                 * Quiet secondary progress.
+                 * This does NOT replace the button.
+                 */}
+                <div
+                  className="analysis-status"
+                  style={{
+                    position: "absolute",
+                    left: "105px",
+                    right: "24px",
+                    bottom: "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    minHeight: "18px",
+                    opacity: loading ? 1 : 0,
+                    pointerEvents: "none",
+                    transition:
+                      "opacity 180ms ease",
+                  }}
+                >
+                  <div
+                    style={{
+                      flex: 1,
+                      height: "3px",
+                      borderRadius: "999px",
+                      background:
+                        "rgba(255,255,255,0.08)",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${analysisProgress}%`,
+                        borderRadius: "999px",
+                        background:
+                          "currentColor",
+                        transition:
+                          "width 500ms ease",
+                      }}
+                    />
                   </div>
-                )}
+
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      opacity: 0.52,
+                      whiteSpace:
+                        "nowrap",
+                      letterSpacing:
+                        "0.01em",
+                    }}
+                  >
+                    {getProgressMessage(
+                      analysisProgress
+                    )}
+                  </span>
+
+                  <strong
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      minWidth: "28px",
+                      textAlign: "right",
+                      opacity: 0.75,
+                    }}
+                  >
+                    {analysisProgress}%
+                  </strong>
+                </div>
               </div>
             )}
           </div>
@@ -1115,7 +1302,9 @@ const handleAuth = async (event) => {
                     Your strongest evidence comes from technical
                     projects, programming fundamentals and
                     cross-source skill signals. CareerOS found{" "}
-                    <strong>{strongestSkills.length}</strong>{" "}
+                    <strong>
+                      {strongestSkills.length}
+                    </strong>{" "}
                     strongly supported skills across the available
                     sources.
                   </p>
@@ -1123,7 +1312,9 @@ const handleAuth = async (event) => {
               </div>
 
               <div className="signal-quote">
-                <span>THE BIGGEST SIGNAL</span>
+                <span>
+                  THE BIGGEST SIGNAL
+                </span>
 
                 <strong>
                   Build depth before adding
@@ -1275,78 +1466,96 @@ const handleAuth = async (event) => {
             </div>
 
             <div className="skills-layout">
-            <div className="skills-feature">
-            <div className="skills-feature-top">
-            <div>
-              <span className="micro-label">
-                SKILL INVENTORY
-              </span>
+              <div className="skills-feature">
+                <div className="skills-feature-top">
+                  <div>
+                    <span className="micro-label">
+                      SKILL INVENTORY
+                    </span>
 
-              <h3>
-                {unifiedSkills.length}
-              </h3>
+                    <h3>
+                      {unifiedSkills.length}
+                    </h3>
 
-              <p>
-                Skills CareerOS found across your resume,
-                LinkedIn, GitHub and LeetCode.
-              </p>
-            </div>
+                    <p>
+                      Skills CareerOS found across your resume,
+                      LinkedIn, GitHub and LeetCode.
+                    </p>
+                  </div>
 
-            <ShieldCheck size={25} />
-          </div>
+                  <ShieldCheck size={25} />
+                </div>
 
-            <div className="skill-summary">
-              <span>
-                <strong>{unifiedSkills.length}</strong>
-                {" "}identified
-              </span>
+                <div className="skill-summary">
+                  <span>
+                    <strong>
+                      {unifiedSkills.length}
+                    </strong>{" "}
+                    identified
+                  </span>
 
-              <span>
-                <strong>{strongestSkills.length}</strong>
-                {" "}strong evidence
-              </span>
+                  <span>
+                    <strong>
+                      {strongestSkills.length}
+                    </strong>{" "}
+                    strong evidence
+                  </span>
 
-              <span>
-                <strong>
-                  {
-                    unifiedSkills.filter(
-                      (skill) =>
-                        skill.status === "demonstrated"
-                    ).length
-                  }
-                </strong>
-                {" "}demonstrated
-              </span>
-            </div>
+                  <span>
+                    <strong>
+                      {
+                        unifiedSkills.filter(
+                          (skill) =>
+                            skill.status ===
+                            "demonstrated"
+                        ).length
+                      }
+                    </strong>{" "}
+                    demonstrated
+                  </span>
+                </div>
 
-            <div className="skill-cloud">
-              {unifiedSkills.map((skill) => (
-                <span
-                  className={`skill-chip ${
-                    skill.status === "strongly_supported"
-                      ? "strong"
-                      : ""
-                  }`}
-                  key={skill.skill}
-                  title={
-                    skill.status === "strongly_supported"
-                      ? "Strong multi-source evidence"
-                      : skill.status === "demonstrated"
-                        ? "Demonstrated through project/source evidence"
-                        : skill.status === "claimed_only"
-                          ? "Claimed in a profile or resume"
-                          : "Limited evidence"
-                  }
-                >
-                  {skill.status === "strongly_supported" && (
-                    <Check size={11} />
+                <div className="skill-cloud">
+                  {unifiedSkills.map(
+                    (skill) => (
+                      <span
+                        className={`skill-chip ${
+                        skill.status ===
+                        "strongly_supported"
+                          ? "strong"
+                          : skill.status ===
+                              "demonstrated"
+                            ? "demonstrated"
+                            : "limited"
+                      }`}
+                        key={skill.skill}
+                        title={
+                          skill.status ===
+                          "strongly_supported"
+                            ? "Strong multi-source evidence"
+                            : skill.status ===
+                                "demonstrated"
+                              ? "Demonstrated through project/source evidence"
+                              : skill.status ===
+                                  "claimed_only"
+                                ? "Claimed in a profile or resume"
+                                : "Limited evidence"
+                        }
+                      >
+                        {skill.status ===
+                          "strongly_supported" && (
+                          <Check size={11} />
+                        )}
+
+                        {titleCase(
+                          skill.skill
+                        )}
+                      </span>
+                    )
                   )}
+                </div>
+              </div>
 
-                  {titleCase(skill.skill)}
-                </span>
-              ))}
-            </div>
-          </div>
               <div className="evidence-list">
                 {topSkills
                   .slice(0, 6)
@@ -1405,7 +1614,7 @@ const handleAuth = async (event) => {
                 >
                   <div className="repo-card-head">
                     <div className="repo-icon">
-                      <GithubIcon />  
+                      <GithubIcon />
                     </div>
 
                     <div>
@@ -1475,14 +1684,21 @@ const handleAuth = async (event) => {
                       []
                     )
                       .slice(0, 4)
-                      .map((gap, index) => (
-                        <span key={index}>
-                          {typeof gap ===
-                          "string"
-                            ? gap
-                            : gap.area}
-                        </span>
-                      ))}
+                      .map(
+                        (
+                          gap,
+                          index
+                        ) => (
+                          <span
+                            key={index}
+                          >
+                            {typeof gap ===
+                            "string"
+                              ? gap
+                              : gap.area}
+                          </span>
+                        )
+                      )}
                   </div>
                 </div>
               </div>
@@ -1543,7 +1759,9 @@ const handleAuth = async (event) => {
                       )}
                     </strong>
 
-                    <span>/ 100</span>
+                    <span>
+                      / 100
+                    </span>
                   </div>
 
                   <div className="leetcode-stat">
@@ -1559,7 +1777,9 @@ const handleAuth = async (event) => {
                       )}
                     </strong>
 
-                    <span>/ 100</span>
+                    <span>
+                      / 100
+                    </span>
                   </div>
 
                   <div className="leetcode-stat">
@@ -1603,12 +1823,16 @@ const handleAuth = async (event) => {
                         value,
                       ]) => (
                         <MetricBar
-                          key={difficulty}
+                          key={
+                            difficulty
+                          }
                           label={titleCase(
                             difficulty
                           )}
                           value={
-                            Number(value) * 100
+                            Number(
+                              value
+                            ) * 100
                           }
                           suffix="%"
                         />
@@ -1717,19 +1941,15 @@ const handleAuth = async (event) => {
                   PROJECTS
                 </span>
 
-                <span className="radar-label right-top">
+                <span className="radar-label right">
                   DSA
                 </span>
 
-                <span className="radar-label right-bottom">
+                <span className="radar-label bottom">
                   SKILLS
                 </span>
 
-                <span className="radar-label left-bottom">
-                  LINKEDIN
-                </span>
-
-                <span className="radar-label left-top">
+                <span className="radar-label left">
                   GITHUB
                 </span>
               </div>
