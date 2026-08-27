@@ -22,13 +22,13 @@ CareerOS runs a multi-stage career intelligence pipeline:
 
 ```text
                     ┌─────────────────┐
-                    │  Resume PDF/DOCX│
+                    │ Resume PDF/DOCX │
                     └────────┬────────┘
                              │
                              ▼
                     ┌─────────────────┐
-                    │ Resume Extraction│
-                    │ & Link Detection │
+                    │Resume Extraction│
+                    │& Link Detection │
                     └────────┬────────┘
                              │
           ┌──────────────────┼──────────────────┐
@@ -39,21 +39,21 @@ CareerOS runs a multi-stage career intelligence pipeline:
      └────┬────┘       └────┬─────┘       └────┬─────┘
           │                  │                  │
           ▼                  ▼                  ▼
-     Profile +          Repository +       Problem +
+      Profile +           Repository +       Problem +
      experience         project analysis   skill analysis
           │                  │                  │
           └──────────────────┼──────────────────┘
                              ▼
                   ┌─────────────────────┐
                   │ Unified Evidence    │
-                  │ Engine               │
+                  │ Engine              │
                   └──────────┬──────────┘
                              ▼
                   ┌─────────────────────┐
                   │ Career Intelligence │
-                  │ & Scoring            │
+                  │ & Scoring           │
                   └──────────┬──────────┘
                              ▼
                   ┌─────────────────────┐
-                  │ React Dashboard      │
+                  │ React Dashboard     │
                   └─────────────────────┘
