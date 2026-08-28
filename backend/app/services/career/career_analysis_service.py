@@ -85,6 +85,67 @@ class CareerAnalysisService:
 
     def analyze_github(self, username):
 
+        print("GH 1: get_user", flush=True)
+
+        profile_data = self.github_client.get_user(
+            username
+        )
+
+        print("GH 2: get_repositories", flush=True)
+
+        repositories_data = self.github_client.get_repositories(
+            username
+        )
+
+        print(
+            f"GH 3: repositories={len(repositories_data)}",
+            flush=True,
+        )
+
+        for repo in repositories_data:
+
+            owner = repo["owner"]["login"]
+            repo_name = repo["name"]
+
+            print(
+                f"GH 4: repo START {owner}/{repo_name}",
+                flush=True,
+            )
+
+            print(
+                f"GH 5: languages {repo_name}",
+                flush=True,
+            )
+
+            languages = (
+                self.github_client.get_repository_languages(
+                    owner,
+                    repo_name,
+                )
+            )
+
+            print(
+                f"GH 6: languages DONE {repo_name}",
+                flush=True,
+            )
+
+            print(
+                f"GH 7: README {repo_name}",
+                flush=True,
+            )
+
+            readme = (
+                self.github_client.get_repository_readme(
+                    owner,
+                    repo_name,
+                )
+            )
+
+            print(
+                f"GH 8: README DONE {repo_name}",
+                flush=True,
+            )
+
         profile_data = (
             self.github_client.get_user(
                 username
