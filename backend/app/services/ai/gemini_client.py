@@ -4,10 +4,6 @@ import os
 import time
 from pathlib import Path
 
-import httpx
-from dotenv import load_dotenv
-load_dotenv()
-
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -43,19 +39,25 @@ class GeminiClient:
                 "is not set."
             )
 
+        print(
+            "Gemini API key configured:",
+            bool(api_key),
+            flush=True,
+        )
+
         self.client = genai.Client(
             api_key=api_key
         )
 
+        # Use the model configured for the current
+        # Gemini API/free-tier environment.
         self.model = "gemini-3.6-flash"
 
-        # Only retry genuinely transient failures.
-        self.max_retries = 3
+        self.max_retries = 2
 
         self.retry_delays = [
             2,
             5,
-            10,
         ]
 
         self.cache_dir = (
@@ -68,6 +70,9 @@ class GeminiClient:
             exist_ok=True,
         )
 
+    # ==================================================
+    # CACHE
+    # ==================================================
 
     def _cache_key(
         self,
@@ -141,16 +146,17 @@ class GeminiClient:
         except Exception as exc:
 
             print(
-                f"\nGemini cache read failed: "
-                f"{exc}"
+                "Gemini cache read failed:",
+                repr(exc),
+                flush=True,
             )
 
-            # Broken cache entries should not
-            # prevent a fresh API request.
             try:
+
                 path.unlink(
                     missing_ok=True
                 )
+
             except Exception:
                 pass
 
@@ -179,11 +185,10 @@ class GeminiClient:
 
         except Exception as exc:
 
-            # Cache failure should NEVER
-            # break CareerOS.
             print(
-                f"\nGemini cache write failed: "
-                f"{exc}"
+                "Gemini cache write failed:",
+                repr(exc),
+                flush=True,
             )
 
     # ==================================================
@@ -195,7 +200,7 @@ class GeminiClient:
         error_text: str,
     ) -> bool:
 
-        quota_indicators = (
+        indicators = (
             "generate_requests_per_day",
             "generaterequestsperday",
             "free_tier_requests",
@@ -203,11 +208,12 @@ class GeminiClient:
             "quota exceeded",
             "quotaexceeded",
             "exceeded your current quota",
+            "resource exhausted",
         )
 
         return any(
             indicator in error_text
-            for indicator in quota_indicators
+            for indicator in indicators
         )
 
     @staticmethod
@@ -215,7 +221,7 @@ class GeminiClient:
         error_text: str,
     ) -> bool:
 
-        retryable_indicators = (
+        indicators = (
             "503",
             "service unavailable",
             "temporarily unavailable",
@@ -228,7 +234,7 @@ class GeminiClient:
 
         return any(
             indicator in error_text
-            for indicator in retryable_indicators
+            for indicator in indicators
         )
 
     @staticmethod
@@ -259,56 +265,122 @@ class GeminiClient:
 
             return None
 
+    # ==================================================
+    # SCHEMA
+    # ==================================================
+
     @staticmethod
-    def _flatten_schema(schema: dict) -> dict:
+    def _flatten_schema(
+        schema: dict,
+    ) -> dict:
         """
-        Convert Pydantic's JSON Schema into a Gemini-compatible
-        structured-output schema by resolving $refs/$defs and
-        removing unsupported JSON Schema metadata.
+        Convert Pydantic JSON Schema into a simpler schema
+        suitable for Gemini structured output.
         """
 
         schema = dict(schema)
-        defs = schema.pop("$defs", {})
+
+        defs = schema.pop(
+            "$defs",
+            {},
+        )
 
         def resolve(node):
-            if not isinstance(node, dict):
+
+            if not isinstance(
+                node,
+                dict,
+            ):
                 return node
 
-            node.pop("title", None)
-            node.pop("$schema", None)
-            node.pop("default", None)
+            node.pop(
+                "title",
+                None,
+            )
 
-            ref = node.pop("$ref", None)
+            node.pop(
+                "$schema",
+                None,
+            )
+
+            node.pop(
+                "default",
+                None,
+            )
+
+            ref = node.pop(
+                "$ref",
+                None,
+            )
 
             if ref:
-                name = ref.split("/")[-1]
+
+                name = (
+                    ref.split("/")[-1]
+                )
 
                 if name in defs:
-                    replacement = resolve(dict(defs[name]))
-                    node.update(replacement)
 
-            # Recursively process nested dictionaries/lists.
-            for key, value in list(node.items()):
-                if isinstance(value, dict):
-                    node[key] = resolve(value)
+                    replacement = (
+                        resolve(
+                            dict(
+                                defs[name]
+                            )
+                        )
+                    )
 
-                elif isinstance(value, list):
+                    node.update(
+                        replacement
+                    )
+
+            for key, value in list(
+                node.items()
+            ):
+
+                if isinstance(
+                    value,
+                    dict,
+                ):
+
+                    node[key] = resolve(
+                        value
+                    )
+
+                elif isinstance(
+                    value,
+                    list,
+                ):
+
                     node[key] = [
                         resolve(item)
-                        if isinstance(item, dict)
+                        if isinstance(
+                            item,
+                            dict,
+                        )
                         else item
                         for item in value
                     ]
 
             return node
 
-        return resolve(schema)
-    
+        return resolve(
+            schema
+        )
+
+    # ==================================================
+    # GENERATE STRUCTURED
+    # ==================================================
+
     def generate_structured(
         self,
         prompt: str,
         response_schema: type[BaseModel],
     ) -> BaseModel:
+
+        print(
+            "Gemini structured generation START",
+            flush=True,
+        )
 
         cache_key = self._cache_key(
             prompt,
@@ -323,20 +395,29 @@ class GeminiClient:
         if cached is not None:
 
             print(
-                "\nGemini cache hit "
-                f"[{response_schema.__name__}]"
+                "Gemini cache HIT "
+                f"[{response_schema.__name__}]",
+                flush=True,
             )
 
             return cached
 
         print(
-            "\nGemini cache miss "
-            f"[{response_schema.__name__}]"
+            "Gemini cache MISS "
+            f"[{response_schema.__name__}]",
+            flush=True,
         )
 
-        # ==================================================
-        # GEMINI REQUEST
-        # ==================================================
+        schema = (
+            self._flatten_schema(
+                response_schema.model_json_schema()
+            )
+        )
+
+        print(
+            "Gemini schema prepared",
+            flush=True,
+        )
 
         last_exception = None
 
@@ -346,36 +427,89 @@ class GeminiClient:
 
             try:
 
-                schema = self._flatten_schema(
-    response_schema.model_json_schema()
-)
+                print(
+                    f"Gemini API call START "
+                    f"(attempt {attempt + 1}/"
+                    f"{self.max_retries})",
+                    flush=True,
+                )
 
                 response = (
                     self.client.models.generate_content(
                         model=self.model,
                         contents=prompt,
-                        config=types.GenerateContentConfig(
-                            response_mime_type="application/json",
-                            response_schema=schema,
+                        config=(
+                            types.GenerateContentConfig(
+                                response_mime_type=(
+                                    "application/json"
+                                ),
+                                response_schema=schema,
+                            )
                         ),
                     )
                 )
 
-                if response.parsed is not None:
+                print(
+                    "Gemini API call DONE",
+                    flush=True,
+                )
 
-                    result = response_schema.model_validate(
-                        response.parsed
+                # --------------------------------------------------
+                # Parse structured result
+                # --------------------------------------------------
+
+                if (
+                    getattr(
+                        response,
+                        "parsed",
+                        None,
+                    )
+                    is not None
+                ):
+
+                    result = (
+                        response_schema
+                        .model_validate(
+                            response.parsed
+                        )
                     )
 
                 else:
 
-                    result = response_schema.model_validate_json(
-                        response.text
+                    text = (
+                        getattr(
+                            response,
+                            "text",
+                            None,
+                        )
                     )
+
+                    if not text:
+
+                        raise ValueError(
+                            "Gemini returned an empty response."
+                        )
+
+                    result = (
+                        response_schema
+                        .model_validate_json(
+                            text
+                        )
+                    )
+
+                print(
+                    "Gemini response parsed",
+                    flush=True,
+                )
 
                 self._save_cache(
                     cache_key,
                     result,
+                )
+
+                print(
+                    "Gemini structured generation DONE",
+                    flush=True,
                 )
 
                 return result
@@ -386,58 +520,55 @@ class GeminiClient:
 
                 error_text = str(
                     exc
-                ).lower()
+                )
+
+                normalized_error = (
+                    error_text.lower()
+                )
+
+                print(
+                    "Gemini request ERROR:",
+                    repr(exc),
+                    flush=True,
+                )
 
                 # ==================================================
-                # QUOTA EXHAUSTION
+                # QUOTA
                 # ==================================================
 
                 if self._is_quota_exhausted(
-                    error_text
+                    normalized_error
                 ):
 
                     retry_after = (
                         self._extract_retry_seconds(
-                            str(exc)
+                            error_text
                         )
                     )
 
                     raise GeminiQuotaError(
                         (
-                            "Gemini API quota has been "
-                            "exhausted for the current "
-                            "project/model quota period."
+                            "Gemini API quota exhausted. "
+                            "Check the Gemini project/model quota "
+                            "associated with GEMINI_API_KEY."
                         ),
                         retry_after=retry_after,
                     ) from exc
 
                 # ==================================================
-                # TRANSIENT FAILURE
+                # RETRY TRANSIENT ERRORS
                 # ==================================================
 
                 retryable = (
                     self._is_retryable(
-                        error_text
-                    )
-                    or (
-                        "429" in error_text
-                        and "quota" not in error_text
-                    )
-                    or (
-                        "rate limit" in error_text
-                        and "quota" not in error_text
-                    )
-                    or (
-                        "resource exhausted"
-                        in error_text
-                        and "quota" not in error_text
+                        normalized_error
                     )
                 )
 
                 if (
                     not retryable
                     or attempt
-                    == self.max_retries - 1
+                    >= self.max_retries - 1
                 ):
 
                     raise
@@ -449,14 +580,19 @@ class GeminiClient:
                 )
 
                 print(
-                    f"\nGemini transient failure "
-                    f"(attempt {attempt + 1}/"
-                    f"{self.max_retries}). "
-                    f"Retrying in {delay}s..."
+                    f"Gemini transient error. "
+                    f"Retrying in {delay}s...",
+                    flush=True,
                 )
 
                 time.sleep(
                     delay
                 )
 
-        raise last_exception
+        if last_exception:
+
+            raise last_exception
+
+        raise RuntimeError(
+            "Gemini generation failed."
+        )
