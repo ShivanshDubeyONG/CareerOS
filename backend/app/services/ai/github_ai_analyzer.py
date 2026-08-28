@@ -1,6 +1,7 @@
 import json
 
 from app.services.ai.gemini_client import GeminiClient
+from app.services.ai.github_scoring import GitHubScorer
 
 from app.schemas.github_ai_schema import GitHubAIAnalysis
 from app.schemas.github_schema import GitHubProfile
