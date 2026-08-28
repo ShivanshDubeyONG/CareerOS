@@ -415,6 +415,184 @@ class CareerAnalysisService:
         resume_path,
     ):
 
+        print("=== CAREER ANALYSIS START ===", flush=True)
+
+        # -------------------------------
+        # 1. Resume
+        # -------------------------------
+        print("STEP 1: Resume analysis START", flush=True)
+
+        resume_result = self.analyze_resume(
+            resume_path
+        )
+
+        print("STEP 1: Resume analysis DONE", flush=True)
+
+        resume = resume_result["profile"]
+
+        # -------------------------------
+        # 2. LinkedIn
+        # -------------------------------
+        linkedin_result = None
+
+        if resume.links.linkedin:
+
+            print(
+                f"STEP 2: LinkedIn START: {resume.links.linkedin}",
+                flush=True,
+            )
+
+            try:
+                linkedin_result = self.analyze_linkedin(
+                    resume.links.linkedin
+                )
+
+                print(
+                    "STEP 2: LinkedIn DONE",
+                    flush=True,
+                )
+
+            except Exception as exc:
+                print(
+                    "STEP 2: LinkedIn FAILED:",
+                    repr(exc),
+                    flush=True,
+                )
+
+                traceback.print_exc()
+
+        # -------------------------------
+        # 3. GitHub
+        # -------------------------------
+        github_result = None
+
+        if resume.links.github:
+
+            print(
+                f"STEP 3: GitHub START: {resume.links.github}",
+                flush=True,
+            )
+
+            try:
+                github_username = self._extract_username(
+                    resume.links.github
+                )
+
+                if github_username:
+                    github_result = self.analyze_github(
+                        github_username
+                    )
+
+                print(
+                    "STEP 3: GitHub DONE",
+                    flush=True,
+                )
+
+            except Exception as exc:
+                print(
+                    "STEP 3: GitHub FAILED:",
+                    repr(exc),
+                    flush=True,
+                )
+
+                traceback.print_exc()
+
+        # -------------------------------
+        # 4. LeetCode
+        # -------------------------------
+        leetcode_result = None
+
+        if resume.links.leetcode:
+
+            print(
+                f"STEP 4: LeetCode START: {resume.links.leetcode}",
+                flush=True,
+            )
+
+            try:
+                leetcode_username = self._extract_username(
+                    resume.links.leetcode
+                )
+
+                if leetcode_username:
+                    leetcode_result = self.analyze_leetcode(
+                        leetcode_username
+                    )
+
+                print(
+                    "STEP 4: LeetCode DONE",
+                    flush=True,
+                )
+
+            except Exception as exc:
+                print(
+                    "STEP 4: LeetCode FAILED:",
+                    repr(exc),
+                    flush=True,
+                )
+
+                traceback.print_exc()
+
+        # -------------------------------
+        # 5. Unified Evidence
+        # -------------------------------
+        print(
+            "STEP 5: Unified analysis START",
+            flush=True,
+        )
+
+        unified_profile = unified_service.build_profile(
+            resume=resume,
+
+            github_profile=(
+                github_result["profile"]
+                if github_result
+                else None
+            ),
+
+            github_analysis=(
+                github_result["analysis"]
+                if github_result
+                else None
+            ),
+
+            linkedin_profile=(
+                linkedin_result["profile"]
+                if linkedin_result
+                else None
+            ),
+
+            linkedin_analysis=(
+                linkedin_result["analysis"]
+                if linkedin_result
+                else None
+            ),
+
+            leetcode_analysis=(
+                leetcode_result["analysis"]
+                if leetcode_result
+                else None
+            ),
+        )
+
+        print(
+            "STEP 5: Unified analysis DONE",
+            flush=True,
+        )
+
+        print(
+            "=== CAREER ANALYSIS COMPLETE ===",
+            flush=True,
+        )
+
+        return {
+            "resume": resume_result,
+            "github": github_result,
+            "leetcode": leetcode_result,
+            "linkedin": linkedin_result,
+            "unified": unified_profile,
+        }
+
         # -------------------------------
         # 1. Resume
         # -------------------------------
