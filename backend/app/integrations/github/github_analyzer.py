@@ -4,7 +4,6 @@ import re
 class GitHubAnalyzer:
 
     @staticmethod
-    @staticmethod
     def extract_dependencies(
         content: str,
         filename: str,

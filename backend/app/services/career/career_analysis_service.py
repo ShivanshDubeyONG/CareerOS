@@ -1,4 +1,3 @@
-import os
 import traceback
 
 from app.extractors.resume_extractor import resume_extractor
@@ -52,12 +51,27 @@ class CareerAnalysisService:
 
     def analyze_resume(self, resume_path):
 
+        print(
+            "RESUME: parsing START",
+            flush=True,
+        )
+
         text = resume_parser.extract_text(
             resume_path
         )
 
+        print(
+            "RESUME: parsing DONE",
+            flush=True,
+        )
+
         resume = resume_extractor.extract(
             text
+        )
+
+        print(
+            "RESUME: links extraction START",
+            flush=True,
         )
 
         pdf_links = resume_parser.extract_links(
@@ -70,8 +84,23 @@ class CareerAnalysisService:
             )
         )
 
+        print(
+            "RESUME: links extraction DONE",
+            flush=True,
+        )
+
+        print(
+            "RESUME: rating START",
+            flush=True,
+        )
+
         rating = resume_rater.rate(
             resume=resume
+        )
+
+        print(
+            "RESUME: rating DONE",
+            flush=True,
         )
 
         return {
@@ -85,71 +114,20 @@ class CareerAnalysisService:
 
     def analyze_github(self, username):
 
-        print("GH 1: get_user", flush=True)
-
-        profile_data = self.github_client.get_user(
-            username
-        )
-
-        print("GH 2: get_repositories", flush=True)
-
-        repositories_data = self.github_client.get_repositories(
-            username
-        )
-
         print(
-            f"GH 3: repositories={len(repositories_data)}",
+            "GH 1: get_user",
             flush=True,
         )
-
-        for repo in repositories_data:
-
-            owner = repo["owner"]["login"]
-            repo_name = repo["name"]
-
-            print(
-                f"GH 4: repo START {owner}/{repo_name}",
-                flush=True,
-            )
-
-            print(
-                f"GH 5: languages {repo_name}",
-                flush=True,
-            )
-
-            languages = (
-                self.github_client.get_repository_languages(
-                    owner,
-                    repo_name,
-                )
-            )
-
-            print(
-                f"GH 6: languages DONE {repo_name}",
-                flush=True,
-            )
-
-            print(
-                f"GH 7: README {repo_name}",
-                flush=True,
-            )
-
-            readme = (
-                self.github_client.get_repository_readme(
-                    owner,
-                    repo_name,
-                )
-            )
-
-            print(
-                f"GH 8: README DONE {repo_name}",
-                flush=True,
-            )
 
         profile_data = (
             self.github_client.get_user(
                 username
             )
+        )
+
+        print(
+            "GH 2: get_repositories",
+            flush=True,
         )
 
         repositories_data = (
@@ -158,20 +136,92 @@ class CareerAnalysisService:
             )
         )
 
+        # --------------------------------------------------
+        # Ignore forks and archived repositories.
+        # --------------------------------------------------
+
+        repositories_data = [
+            repo
+            for repo in repositories_data
+            if not repo.get(
+                "fork",
+                False,
+            )
+            and not repo.get(
+                "archived",
+                False,
+            )
+        ]
+
+        # --------------------------------------------------
+        # Most recently updated repositories first.
+        # --------------------------------------------------
+
+        repositories_data = sorted(
+            repositories_data,
+            key=lambda repo: (
+                repo.get(
+                    "updated_at"
+                )
+                or ""
+            ),
+            reverse=True,
+        )
+
+        # --------------------------------------------------
+        # Render/free-tier safety limit.
+        # --------------------------------------------------
+
+        MAX_ANALYZED_REPOSITORIES = 12
+
+        repositories_data = (
+            repositories_data[
+                :MAX_ANALYZED_REPOSITORIES
+            ]
+        )
+
+        print(
+            f"GH 3: repositories="
+            f"{len(repositories_data)}",
+            flush=True,
+        )
+
+        owner = (
+            profile_data.get(
+                "login"
+            )
+            or username
+        )
+
         repositories = []
 
-        dependency_files = [
-            "requirements.txt",
-            "pyproject.toml",
-            "package.json",
-        ]
+        # ==================================================
+        # SINGLE REPOSITORY PASS
+        # ==================================================
 
         for repo in repositories_data:
 
-            owner = repo["owner"]["login"]
             repo_name = repo["name"]
 
+            print(
+                f"GH 4: repo START "
+                f"{owner}/{repo_name}",
+                flush=True,
+            )
+
+            # --------------------------------------------------
+            # Languages
+            # --------------------------------------------------
+
+            languages = {}
+
             try:
+
+                print(
+                    f"GH 5: languages "
+                    f"{repo_name}",
+                    flush=True,
+                )
 
                 languages = (
                     self.github_client
@@ -181,11 +231,34 @@ class CareerAnalysisService:
                     )
                 )
 
-            except Exception:
+                print(
+                    f"GH 6: languages DONE "
+                    f"{repo_name}",
+                    flush=True,
+                )
 
-                languages = {}
+            except Exception as exc:
+
+                print(
+                    f"GH 6: languages FAILED "
+                    f"{repo_name}: "
+                    f"{exc!r}",
+                    flush=True,
+                )
+
+            # --------------------------------------------------
+            # README
+            # --------------------------------------------------
+
+            readme = None
 
             try:
+
+                print(
+                    f"GH 7: README "
+                    f"{repo_name}",
+                    flush=True,
+                )
 
                 readme = (
                     self.github_client
@@ -195,9 +268,30 @@ class CareerAnalysisService:
                     )
                 )
 
-            except Exception:
+                print(
+                    f"GH 8: README DONE "
+                    f"{repo_name}",
+                    flush=True,
+                )
 
-                readme = None
+            except Exception as exc:
+
+                print(
+                    f"GH 8: README FAILED "
+                    f"{repo_name}: "
+                    f"{exc!r}",
+                    flush=True,
+                )
+
+            # --------------------------------------------------
+            # Dependency files
+            # --------------------------------------------------
+
+            dependency_files = [
+                "requirements.txt",
+                "pyproject.toml",
+                "package.json",
+            ]
 
             dependency_data = {}
             dependency_names = []
@@ -225,33 +319,70 @@ class CareerAnalysisService:
                             filename
                         )
 
-                except Exception:
+                except Exception as exc:
 
-                    pass
+                    print(
+                        f"GH dependency skipped "
+                        f"{owner}/"
+                        f"{repo_name}/"
+                        f"{filename}: "
+                        f"{exc!r}",
+                        flush=True,
+                    )
+
+            # --------------------------------------------------
+            # Extract dependencies
+            # --------------------------------------------------
 
             dependencies = []
 
-            for filename, content in dependency_data.items():
+            for (
+                filename,
+                content,
+            ) in dependency_data.items():
 
-                extracted = (
-                    self.github_analyzer
-                    .extract_dependencies(
-                        content,
-                        filename,
+                try:
+
+                    extracted = (
+                        self.github_analyzer
+                        .extract_dependencies(
+                            content,
+                            filename,
+                        )
                     )
-                )
 
-                dependencies.extend(
-                    extracted
-                )
+                    dependencies.extend(
+                        extracted
+                    )
+
+                except Exception as exc:
+
+                    print(
+                        f"GH dependency parsing "
+                        f"failed {filename}: "
+                        f"{exc!r}",
+                        flush=True,
+                    )
 
             dependencies = sorted(
-                set(dependencies)
+                set(
+                    dependencies
+                )
             )
+
+            # --------------------------------------------------
+            # Repository tree
+            # --------------------------------------------------
 
             file_paths = []
 
             try:
+
+                print(
+                    f"GH tree START "
+                    f"{repo_name}",
+                    flush=True,
+                )
 
                 file_paths = (
                     self.github_client
@@ -260,20 +391,61 @@ class CareerAnalysisService:
                         repo_name,
                         repo.get(
                             "default_branch"
-                        ) or "main",
+                        )
+                        or "main",
                     )
                 )
 
-            except Exception:
-
-                file_paths = []
-
-            structure = (
-                self.github_analyzer
-                .analyze_repository_structure(
-                    file_paths
+                print(
+                    f"GH tree DONE "
+                    f"{repo_name}: "
+                    f"{len(file_paths)} files",
+                    flush=True,
                 )
-            )
+
+            except Exception as exc:
+
+                print(
+                    f"GH tree FAILED "
+                    f"{repo_name}: "
+                    f"{exc!r}",
+                    flush=True,
+                )
+
+            # --------------------------------------------------
+            # Repository structure
+            # --------------------------------------------------
+
+            try:
+
+                structure = (
+                    self.github_analyzer
+                    .analyze_repository_structure(
+                        file_paths
+                    )
+                )
+
+            except Exception as exc:
+
+                print(
+                    f"GH structure FAILED "
+                    f"{repo_name}: "
+                    f"{exc!r}",
+                    flush=True,
+                )
+
+                structure = {
+                    "source_directories": [],
+                    "test_files": [],
+                    "config_files": [],
+                    "has_docker": False,
+                    "has_frontend": False,
+                    "has_tests": False,
+                }
+
+            # --------------------------------------------------
+            # Build repository object
+            # --------------------------------------------------
 
             repository = GitHubRepository(
 
@@ -338,38 +510,62 @@ class CareerAnalysisService:
 
                 file_paths=file_paths,
 
-                source_directories=structure[
-                    "source_directories"
-                ],
+                source_directories=(
+                    structure[
+                        "source_directories"
+                    ]
+                ),
 
-                test_files=structure[
-                    "test_files"
-                ],
+                test_files=(
+                    structure[
+                        "test_files"
+                    ]
+                ),
 
-                config_files=structure[
-                    "config_files"
-                ],
+                config_files=(
+                    structure[
+                        "config_files"
+                    ]
+                ),
 
-                has_docker=structure[
-                    "has_docker"
-                ],
+                has_docker=(
+                    structure[
+                        "has_docker"
+                    ]
+                ),
 
-                has_frontend=structure[
-                    "has_frontend"
-                ],
+                has_frontend=(
+                    structure[
+                        "has_frontend"
+                    ]
+                ),
 
-                has_tests=structure[
-                    "has_tests"
-                ],
+                has_tests=(
+                    structure[
+                        "has_tests"
+                    ]
+                ),
             )
 
             repositories.append(
                 repository
             )
 
+            print(
+                f"GH 4: repo DONE "
+                f"{repo_name}",
+                flush=True,
+            )
+
+        # ==================================================
+        # BUILD GITHUB PROFILE
+        # ==================================================
+
         github_profile = GitHubProfile(
 
-            username=profile_data["login"],
+            username=profile_data[
+                "login"
+            ],
 
             name=profile_data.get(
                 "name"
@@ -403,8 +599,24 @@ class CareerAnalysisService:
             repositories=repositories,
         )
 
-        analysis = self.github_ai.analyze(
-            github_profile
+        # ==================================================
+        # GITHUB AI ANALYSIS
+        # ==================================================
+
+        print(
+            "GH 9: GitHub AI analysis START",
+            flush=True,
+        )
+
+        analysis = (
+            self.github_ai.analyze(
+                github_profile
+            )
+        )
+
+        print(
+            "GH 10: GitHub AI analysis DONE",
+            flush=True,
         )
 
         return {
@@ -416,7 +628,16 @@ class CareerAnalysisService:
     # LEETCODE
     # ==================================================
 
-    def analyze_leetcode(self, username):
+    def analyze_leetcode(
+        self,
+        username,
+    ):
+
+        print(
+            f"LC: analysis START "
+            f"{username}",
+            flush=True,
+        )
 
         profile = (
             self.leetcode_client
@@ -425,10 +646,22 @@ class CareerAnalysisService:
             )
         )
 
+        print(
+            f"LC: profile DONE "
+            f"{username}",
+            flush=True,
+        )
+
         analysis = (
             leetcode_service.analyze(
                 profile
             )
+        )
+
+        print(
+            f"LC: analysis DONE "
+            f"{username}",
+            flush=True,
         )
 
         return {
@@ -440,13 +673,26 @@ class CareerAnalysisService:
     # LINKEDIN
     # ==================================================
 
-    def analyze_linkedin(self, url):
+    def analyze_linkedin(
+        self,
+        url,
+    ):
+
+        print(
+            f"LI: fetch START "
+            f"{url}",
+            flush=True,
+        )
 
         raw_profile = (
-            apify_linkedin_client
-            .fetch_profile(
+            apify_linkedin_client.fetch_profile(
                 url
             )
+        )
+
+        print(
+            "LI: fetch DONE",
+            flush=True,
         )
 
         profile, metadata = (
@@ -455,10 +701,20 @@ class CareerAnalysisService:
             )
         )
 
+        print(
+            "LI: analysis START",
+            flush=True,
+        )
+
         analysis = (
             linkedin_service.analyze(
                 profile
             )
+        )
+
+        print(
+            "LI: analysis DONE",
+            flush=True,
         )
 
         return {
@@ -476,36 +732,57 @@ class CareerAnalysisService:
         resume_path,
     ):
 
-        print("=== CAREER ANALYSIS START ===", flush=True)
-
-        # -------------------------------
-        # 1. Resume
-        # -------------------------------
-        print("STEP 1: Resume analysis START", flush=True)
-
-        resume_result = self.analyze_resume(
-            resume_path
+        print(
+            "=== CAREER ANALYSIS START ===",
+            flush=True,
         )
 
-        print("STEP 1: Resume analysis DONE", flush=True)
+        # ==================================================
+        # 1. RESUME
+        # ==================================================
 
-        resume = resume_result["profile"]
+        print(
+            "STEP 1: Resume analysis START",
+            flush=True,
+        )
 
-        # -------------------------------
-        # 2. LinkedIn
-        # -------------------------------
+        resume_result = (
+            self.analyze_resume(
+                resume_path
+            )
+        )
+
+        print(
+            "STEP 1: Resume analysis DONE",
+            flush=True,
+        )
+
+        resume = (
+            resume_result[
+                "profile"
+            ]
+        )
+
+        # ==================================================
+        # 2. LINKEDIN
+        # ==================================================
+
         linkedin_result = None
 
         if resume.links.linkedin:
 
             print(
-                f"STEP 2: LinkedIn START: {resume.links.linkedin}",
+                f"STEP 2: LinkedIn START: "
+                f"{resume.links.linkedin}",
                 flush=True,
             )
 
             try:
-                linkedin_result = self.analyze_linkedin(
-                    resume.links.linkedin
+
+                linkedin_result = (
+                    self.analyze_linkedin(
+                        resume.links.linkedin
+                    )
                 )
 
                 print(
@@ -514,6 +791,7 @@ class CareerAnalysisService:
                 )
 
             except Exception as exc:
+
                 print(
                     "STEP 2: LinkedIn FAILED:",
                     repr(exc),
@@ -522,34 +800,58 @@ class CareerAnalysisService:
 
                 traceback.print_exc()
 
-        # -------------------------------
-        # 3. GitHub
-        # -------------------------------
+        else:
+
+            print(
+                "STEP 2: LinkedIn SKIPPED",
+                flush=True,
+            )
+
+        # ==================================================
+        # 3. GITHUB
+        # ==================================================
+
         github_result = None
 
         if resume.links.github:
 
             print(
-                f"STEP 3: GitHub START: {resume.links.github}",
+                f"STEP 3: GitHub START: "
+                f"{resume.links.github}",
                 flush=True,
             )
 
             try:
-                github_username = self._extract_username(
-                    resume.links.github
+
+                github_username = (
+                    self._extract_username(
+                        resume.links.github
+                    )
                 )
 
                 if github_username:
-                    github_result = self.analyze_github(
-                        github_username
+
+                    github_result = (
+                        self.analyze_github(
+                            github_username
+                        )
                     )
 
-                print(
-                    "STEP 3: GitHub DONE",
-                    flush=True,
-                )
+                    print(
+                        "STEP 3: GitHub DONE",
+                        flush=True,
+                    )
+
+                else:
+
+                    print(
+                        "STEP 3: GitHub SKIPPED "
+                        "(username not found)",
+                        flush=True,
+                    )
 
             except Exception as exc:
+
                 print(
                     "STEP 3: GitHub FAILED:",
                     repr(exc),
@@ -558,34 +860,58 @@ class CareerAnalysisService:
 
                 traceback.print_exc()
 
-        # -------------------------------
-        # 4. LeetCode
-        # -------------------------------
+        else:
+
+            print(
+                "STEP 3: GitHub SKIPPED",
+                flush=True,
+            )
+
+        # ==================================================
+        # 4. LEETCODE
+        # ==================================================
+
         leetcode_result = None
 
         if resume.links.leetcode:
 
             print(
-                f"STEP 4: LeetCode START: {resume.links.leetcode}",
+                f"STEP 4: LeetCode START: "
+                f"{resume.links.leetcode}",
                 flush=True,
             )
 
             try:
-                leetcode_username = self._extract_username(
-                    resume.links.leetcode
+
+                leetcode_username = (
+                    self._extract_username(
+                        resume.links.leetcode
+                    )
                 )
 
                 if leetcode_username:
-                    leetcode_result = self.analyze_leetcode(
-                        leetcode_username
+
+                    leetcode_result = (
+                        self.analyze_leetcode(
+                            leetcode_username
+                        )
                     )
 
-                print(
-                    "STEP 4: LeetCode DONE",
-                    flush=True,
-                )
+                    print(
+                        "STEP 4: LeetCode DONE",
+                        flush=True,
+                    )
+
+                else:
+
+                    print(
+                        "STEP 4: LeetCode SKIPPED "
+                        "(username not found)",
+                        flush=True,
+                    )
 
             except Exception as exc:
+
                 print(
                     "STEP 4: LeetCode FAILED:",
                     repr(exc),
@@ -594,46 +920,67 @@ class CareerAnalysisService:
 
                 traceback.print_exc()
 
-        # -------------------------------
-        # 5. Unified Evidence
-        # -------------------------------
+        else:
+
+            print(
+                "STEP 4: LeetCode SKIPPED",
+                flush=True,
+            )
+
+        # ==================================================
+        # 5. UNIFIED EVIDENCE
+        # ==================================================
+
         print(
             "STEP 5: Unified analysis START",
             flush=True,
         )
 
-        unified_profile = unified_service.build_profile(
-            resume=resume,
+        unified_profile = (
+            unified_service.build_profile(
 
-            github_profile=(
-                github_result["profile"]
-                if github_result
-                else None
-            ),
+                resume=resume,
 
-            github_analysis=(
-                github_result["analysis"]
-                if github_result
-                else None
-            ),
+                github_profile=(
+                    github_result[
+                        "profile"
+                    ]
+                    if github_result
+                    else None
+                ),
 
-            linkedin_profile=(
-                linkedin_result["profile"]
-                if linkedin_result
-                else None
-            ),
+                github_analysis=(
+                    github_result[
+                        "analysis"
+                    ]
+                    if github_result
+                    else None
+                ),
 
-            linkedin_analysis=(
-                linkedin_result["analysis"]
-                if linkedin_result
-                else None
-            ),
+                linkedin_profile=(
+                    linkedin_result[
+                        "profile"
+                    ]
+                    if linkedin_result
+                    else None
+                ),
 
-            leetcode_analysis=(
-                leetcode_result["analysis"]
-                if leetcode_result
-                else None
-            ),
+                linkedin_analysis=(
+                    linkedin_result[
+                        "analysis"
+                    ]
+                    if linkedin_result
+                    else None
+                ),
+
+                leetcode_analysis=(
+                    leetcode_result[
+                        "analysis"
+                    ]
+                    if leetcode_result
+                    else None
+                ),
+            )
         )
 
         print(
@@ -654,165 +1001,14 @@ class CareerAnalysisService:
             "unified": unified_profile,
         }
 
-        # -------------------------------
-        # 1. Resume
-        # -------------------------------
-
-        resume_result = (
-            self.analyze_resume(
-                resume_path
-            )
-        )
-
-        resume = resume_result[
-            "profile"
-        ]
-
-        # -------------------------------
-        # 2. LinkedIn
-        # -------------------------------
-
-        linkedin_result = None
-
-        if resume.links.linkedin:
-
-            try:
-
-                linkedin_result = (
-                    self.analyze_linkedin(
-                        resume.links.linkedin
-                    )
-                )
-
-            except Exception as exc:
-
-                print(
-                    "\nLinkedIn unavailable:",
-                    repr(exc),
-                )
-
-                traceback.print_exc()
-
-        # -------------------------------
-        # 3. GitHub
-        # -------------------------------
-
-        github_result = None
-
-        if resume.links.github:
-
-            try:
-
-                github_username = (
-                    self._extract_username(
-                        resume.links.github
-                    )
-                )
-
-                if github_username:
-
-                    github_result = (
-                        self.analyze_github(
-                            github_username
-                        )
-                    )
-
-            except Exception as exc:
-
-                print(
-                    "\nGitHub unavailable:",
-                    repr(exc),
-                )
-
-                traceback.print_exc()
-
-        # -------------------------------
-        # 4. LeetCode
-        # -------------------------------
-
-        leetcode_result = None
-
-        if resume.links.leetcode:
-
-            try:
-
-                leetcode_username = (
-                    self._extract_username(
-                        resume.links.leetcode
-                    )
-                )
-
-                if leetcode_username:
-
-                    leetcode_result = (
-                        self.analyze_leetcode(
-                            leetcode_username
-                        )
-                    )
-
-            except Exception as exc:
-
-                print(
-                    "\nLeetCode unavailable:",
-                    repr(exc),
-                )
-
-                traceback.print_exc()
-
-        # -------------------------------
-        # 5. Unified Evidence
-        # -------------------------------
-
-        unified_profile = (
-            unified_service.build_profile(
-                resume=resume,
-
-                github_profile=(
-                    github_result["profile"]
-                    if github_result
-                    else None
-                ),
-
-                github_analysis=(
-                    github_result["analysis"]
-                    if github_result
-                    else None
-                ),
-
-                linkedin_profile=(
-                    linkedin_result["profile"]
-                    if linkedin_result
-                    else None
-                ),
-
-                linkedin_analysis=(
-                    linkedin_result["analysis"]
-                    if linkedin_result
-                    else None
-                ),
-
-                leetcode_analysis=(
-                    leetcode_result["analysis"]
-                    if leetcode_result
-                    else None
-                ),
-            )
-        )
-
-        return {
-            "resume": resume_result,
-            "github": github_result,
-            "leetcode": leetcode_result,
-            "linkedin": linkedin_result,
-            "unified": unified_profile,
-        }
-
     # ==================================================
     # URL → USERNAME
     # ==================================================
 
     @staticmethod
-    def _extract_username(url):
+    def _extract_username(
+        url,
+    ):
 
         if not url:
             return None
@@ -830,6 +1026,10 @@ class CareerAnalysisService:
             if username
             else None
         )
+
+    # ==================================================
+    # CLOSE CLIENTS
+    # ==================================================
 
     def close(self):
 
