@@ -2,16 +2,16 @@
 
 > *Your career data is scattered everywhere. CareerOS puts the pieces together.*
 
-**[→ Try CareerOS](https://careeros-yp7y.onrender.com)**
+**[LIVE DEMO](https://careeros-yp7y.onrender.com)**
 
 CareerOS is an AI-powered career intelligence platform that analyzes a candidate's professional footprint across multiple sources and turns it into an evidence-backed career profile.
 
 Instead of evaluating a resume in isolation, CareerOS cross-checks information across:
 
-- 📄 Resume
-- 💼 LinkedIn
-- 🐙 GitHub
-- 💻 LeetCode
+- Resume
+- LinkedIn
+- GitHub
+- LeetCode
 
 The goal is simple:
 
@@ -36,7 +36,7 @@ It connects resume claims with professional experience, projects, skills, and pr
 ## How It Works
 
 ```text
-                        ┌─────────────────┐
+                    ┌─────────────────┐
                     │ Resume PDF/DOCX │
                     └────────┬────────┘
                              │
