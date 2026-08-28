@@ -27,14 +27,40 @@ class ResumeRater:
             "links": resume.links.model_dump(),
         }
 
+        # Keep the prompt reasonably small for Render's
+        # free-tier instance.
+        evidence_json = json.dumps(
+            evidence_packet,
+            indent=2,
+            ensure_ascii=False,
+        )
+
+        if len(evidence_json) > 20000:
+            evidence_json = (
+                evidence_json[:20000]
+                + "\n\n[Resume evidence truncated]"
+            )
+
+        # Generate the schema separately. This avoids using
+        # Gemini's structured-output mode for ResumeRating.
+        output_schema = json.dumps(
+            ResumeRating.model_json_schema(),
+            indent=2,
+            ensure_ascii=False,
+        )
+
+        if len(output_schema) > 12000:
+            output_schema = (
+                output_schema[:12000]
+                + "\n\n[Schema description truncated]"
+            )
+
         prompt = f"""
 You are the Resume Intelligence engine for CareerOS.
 
-Your job is to evaluate the candidate's resume as a REAL
-technical hiring document for software engineering and
-AI/ML internships and entry-level roles.
-
-The goal is NOT to reward cosmetic resume formatting.
+Evaluate the candidate's resume as a REAL technical hiring
+document for software engineering and AI/ML internships and
+entry-level roles.
 
 The goal is to determine:
 
@@ -43,84 +69,81 @@ The goal is to determine:
 3. What changes would materially improve their chances
    with a technical recruiter or hiring manager.
 
+==================================================
 CANDIDATE RESUME EVIDENCE
-=========================
+==================================================
 
-{json.dumps(
-    evidence_packet,
-    indent=2,
-    ensure_ascii=False,
-)}
+{evidence_json}
 
 ==================================================
 EVIDENCE RULES
 ==================================================
 
-1. Evaluate ONLY evidence supplied above.
+Evaluate ONLY evidence supplied above.
 
-2. NEVER invent facts.
+NEVER invent facts.
 
-3. NEVER invent:
-   - percentages
-   - accuracy values
-   - RMSE values
-   - dataset sizes
-   - performance improvements
-   - rankings
-   - users
-   - revenue
-   - latency
-   - employment
-   - internships
-   - job titles
-   - companies
-   - achievements
-   - certifications
-   - technologies
-   - project results
-   - dates
+NEVER invent:
 
-4. A recommendation may ask the candidate to ADD a missing
-   metric, but the metric itself must never be fabricated.
+- percentages
+- accuracy values
+- RMSE values
+- dataset sizes
+- performance improvements
+- rankings
+- users
+- revenue
+- latency
+- employment
+- internships
+- job titles
+- companies
+- achievements
+- certifications
+- technologies
+- project results
+- dates
 
-5. If evidence is missing, explicitly state that
-   candidate-provided evidence is required.
+A recommendation may ask the candidate to ADD a missing
+metric, but the metric itself must never be fabricated.
 
-6. You may improve:
-   - wording
-   - clarity
-   - structure
-   - technical phrasing
-   - conciseness
-   - organization
+If evidence is missing, explicitly state that candidate-provided
+evidence is required.
 
-7. Never turn an unsupported assumption into a factual
-   achievement.
+You may improve:
 
-8. Distinguish between:
-   - missing information
-   - weak wording
-   - weak presentation
-   - genuinely weak experience
+- wording
+- clarity
+- structure
+- technical phrasing
+- conciseness
+- organization
 
-9. Do not penalize a candidate simply because a section
-   is unavailable.
+Never turn an unsupported assumption into a factual achievement.
 
-10. Do not assume that lack of professional experience means
-    lack of technical ability.
+Distinguish between:
 
-11. A strong student project is legitimate evidence of
-    technical ability.
+- missing information
+- weak wording
+- weak presentation
+- genuinely weak experience
 
-12. Do not claim the candidate has experience simply because
-    they possess a skill.
+Do not penalize a candidate simply because a section is unavailable.
+
+Do not assume that lack of professional experience means lack
+of technical ability.
+
+A strong student project is legitimate evidence of technical ability.
+
+Do not claim the candidate has experience simply because they
+possess a skill.
 
 ==================================================
 WHAT MATTERS MOST
 ==================================================
 
-Prioritize substantive technical evidence over cosmetic
-resume conventions.
+Prioritize substantive technical evidence over cosmetic resume
+conventions.
 
 For technical students, prioritize:
 
@@ -145,41 +168,23 @@ reasonably exist.
 Do NOT assume every project needs a percentage, accuracy,
 latency, user count, or benchmark.
 
-For example:
-
-GOOD:
-"Built a Flask API for serving a trained ML model."
-
-Potential improvement:
-"Add the model's actual validation metric if available."
-
-BAD:
-"Project is weak because it has no quantified impact."
-
 ==================================================
-SKILLS EVALUATION
+SKILLS
 ==================================================
 
 Evaluate whether the skills section accurately represents
 the candidate's technical profile.
 
-Do NOT penalize the candidate heavily because skills are not
+Do not penalize the candidate heavily because skills are not
 perfectly categorized.
 
-Only recommend grouping skills when:
+Do not recommend adding skills that are not supported by
+the resume.
 
-- the list is genuinely difficult to scan,
-- categories would materially improve readability,
-- or the current structure makes important skills difficult
-  to find.
-
-Do NOT recommend adding skills that are not supported by the
-resume.
-
-Do NOT confuse skill organization with technical ability.
+Do not confuse skill organization with technical ability.
 
 ==================================================
-SUMMARY EVALUATION
+SUMMARY
 ==================================================
 
 A professional summary is OPTIONAL.
@@ -189,50 +194,29 @@ summary, do NOT treat the absence of a summary as a major
 weakness.
 
 Recommend a summary only when it would materially improve
-positioning, such as when:
+positioning.
 
-- the candidate's direction is unclear,
-- their strongest technical focus is difficult to infer,
-- or the resume lacks a clear professional narrative.
-
-A missing summary should have a LOW impact on the overall
+A missing summary should have LOW impact on the overall
 evaluation.
 
 ==================================================
 QUANTIFIED IMPACT
 ==================================================
 
-Evaluate quantified impact intelligently.
-
 Reward real metrics when they exist.
 
-However:
+Do not require fabricated metrics.
 
-- do not require fabricated metrics,
-- do not require every project to contain metrics,
-- do not penalize technically strong work simply because
-  outcomes were not quantified,
-- distinguish between measurable engineering work and work
-  where meaningful metrics may not exist.
+Do not require every project to contain metrics.
 
-Examples of legitimate evidence include:
-
-- model accuracy / F1 / RMSE
-- dataset size
-- number of users
-- API latency
-- throughput
-- number of endpoints
-- number of problems solved
-- deployment scale
-- benchmark results
-- measurable performance improvements
+Do not penalize technically strong work simply because outcomes
+were not quantified.
 
 Only recommend adding a metric when the underlying work
 reasonably suggests that one may exist.
 
 ==================================================
-SCORING PHILOSOPHY
+SCORING
 ==================================================
 
 Score each section from 0 to 100:
@@ -249,124 +233,41 @@ Score each section from 0 to 100:
 - target role alignment
 - completeness
 
-IMPORTANT:
-
-These section scores are NOT equally important.
-
-For a technical student, substantive technical evidence
-should dominate the overall evaluation.
+For a technical student, substantive technical evidence should
+dominate the overall evaluation.
 
 Do NOT allow a missing summary, imperfect skill formatting,
 or lack of quantified metrics to drag an otherwise strong
 technical resume into a poor overall score.
 
-A candidate with:
-
-- strong technical projects,
-- meaningful ML/software implementation,
-- relevant technologies,
-- strong problem-solving evidence,
-
-can legitimately receive a strong overall score even if they
-have limited professional experience.
-
-Likewise, a candidate with excellent formatting but weak
-technical evidence should NOT receive a high score merely
-because the resume looks polished.
-
-==================================================
-STRICT SCORE CALIBRATION
-==================================================
-
-Be conservative with numeric scores.
-
-A score of 90-100 represents an exceptional resume that would
-stand out even among strong technical candidates.
-
-A score of 85-89 represents excellent work.
-
-A score of 75-84 represents a strong resume.
-
-A score of 65-74 represents a good but clearly developing resume.
-
-A score of 55-64 represents an average/developing resume.
-
-Below 55 represents substantial weaknesses.
-
-IMPORTANT:
-
-Do NOT give a student a 90+ overall score merely because they
-have strong projects, many technical skills, or polished
-formatting.
-
-For a student or entry-level candidate with little or no
-professional experience, a strong resume will generally fall
-in the 70-85 range unless the evidence is genuinely exceptional.
-
-Professional experience should materially distinguish an
-exceptional professional resume from an exceptional student
-resume.
-
-Strong projects are valuable evidence of technical ability,
-but they are NOT equivalent to internships, employment, or
+A candidate with strong technical projects and meaningful
+implementation can receive a strong score even with limited
 professional experience.
 
 Do not artificially punish students for being students.
-Instead, distinguish technical strength from professional
-readiness.
-
-A high score must be earned by consistently strong evidence
-across the important dimensions.
 
 90+ should be rare.
 95+ should be extremely rare.
 100 should effectively represent an almost flawless resume.
+
 ==================================================
 RECOMMENDATIONS
 ==================================================
 
-ACTION PLAN WRITING RULES:
+Write recommendations as a practical career coach.
 
-Write recommendations as a practical career coach speaking directly to the user.
+- Use simple, clear language.
+- Avoid corporate jargon.
+- Every recommendation must clearly explain WHAT to do.
+- Mention the specific project, skill, experience, or section
+  when relevant.
+- Explain why the recommendation matters.
+- Keep titles concise and action-oriented.
+- Keep explanations to 1–2 short sentences.
+- Do not invent achievements or metrics.
+- Prioritize the highest-impact improvements.
 
-- Use simple, clear language that a student or job seeker can understand immediately.
-- Avoid corporate jargon, recruiter-speak, and overly formal language.
-- Every recommendation must clearly explain WHAT the user should do.
-- Prefer specific, actionable advice over vague statements.
-- Mention the specific project, skill, experience, or resume section when relevant.
-- Explain why the recommendation matters in one short sentence.
-- Keep recommendation titles concise and action-oriented.
-- Keep recommendation explanations to 1–2 short sentences.
-- Prefer natural wording such as "Add measurable results to your projects"
-  instead of "Add specific evaluation metrics and dataset details."
-- Do not use phrases such as "technical screeners evaluate..." unless absolutely
-  necessary.
-- Do not invent achievements, metrics, technologies, datasets, or experience.
-- Base recommendations only on evidence present in the user's career data.
-- Prioritize the most impactful improvements first.
-- Write recommendations so the user could immediately turn them into a task.
-
-Example:
-
-Bad:
-"Add specific evaluation metrics and dataset details to the Marks Predictor
-and CareerOS projects."
-
-Better:
-"Add measurable results to your projects."
-
-Explanation:
-"For Marks Predictor and CareerOS, include things like dataset size,
-accuracy, latency, or other real results to show what you achieved."
-
-Recommendations must be:
-
-- specific
-- actionable
-- evidence-grounded
-- prioritized by actual hiring impact
-
-Prioritize recommendations approximately in this order:
+Prioritize:
 
 1. Missing or weak substantive evidence
 2. Weak project / experience descriptions
@@ -377,60 +278,114 @@ Prioritize recommendations approximately in this order:
 7. Skills organization
 8. Professional summary
 
-Do NOT produce recommendations simply because a common resume
-best practice is absent.
-
-Every recommendation should answer:
-
-"Why would fixing this materially improve the candidate's
-resume?"
-
 Avoid generic advice such as:
 
-- "Improve your resume."
-- "Add more skills."
-- "Make it professional."
-- "Use better formatting."
+- Improve your resume.
+- Add more skills.
+- Make it professional.
+- Use better formatting.
 
 ==================================================
-IMPORTANT CALIBRATION
+OUTPUT FORMAT
 ==================================================
 
-CareerOS is intended to be a DEEP career intelligence system.
+Return ONLY valid JSON.
 
-Do not behave like a generic resume checker.
+Do NOT use markdown.
 
-Do not over-penalize students.
+Do NOT use ```json fences.
 
-Do not reward empty buzzwords.
+The JSON MUST conform to this Pydantic schema:
 
-Do not reward formatting over substance.
+{output_schema}
 
-Do not punish missing optional sections.
-
-Do not invent achievements.
-
-Strong technical evidence should be recognized as strong
-technical evidence.
-
-Weak presentation should be identified separately from weak
-career substance.
-
-==================================================
-OUTPUT
-==================================================
-
-Return the required structured ResumeRating object.
-
-The output must be useful to a real student applying for
-software engineering, AI/ML, backend, full-stack, and related
-technical internships and entry-level roles.
+Return JSON only.
 """
 
-        return self.gemini.generate_structured(
-            prompt=prompt,
-            response_schema=ResumeRating,
+        print(
+            "ResumeRating: Gemini text generation START",
+            flush=True,
         )
+
+        try:
+
+            raw_response = (
+                self.gemini.generate_text(
+                    prompt
+                )
+            )
+
+            print(
+                "ResumeRating: raw response received",
+                flush=True,
+            )
+
+            cleaned_response = (
+                raw_response.strip()
+            )
+
+            # Remove markdown fences if Gemini adds them.
+            if cleaned_response.startswith(
+                "```"
+            ):
+
+                if cleaned_response.startswith(
+                    "```json"
+                ):
+
+                    cleaned_response = (
+                        cleaned_response[
+                            7:
+                        ]
+                    )
+
+                elif cleaned_response.startswith(
+                    "```"
+                ):
+
+                    cleaned_response = (
+                        cleaned_response[
+                            3:
+                        ]
+                    )
+
+                if cleaned_response.endswith(
+                    "```"
+                ):
+
+                    cleaned_response = (
+                        cleaned_response[
+                            :-3
+                        ]
+                    )
+
+                cleaned_response = (
+                    cleaned_response.strip()
+                )
+
+            result = (
+                ResumeRating
+                .model_validate_json(
+                    cleaned_response
+                )
+            )
+
+            print(
+                "ResumeRating: JSON validation DONE",
+                flush=True,
+            )
+
+            return result
+
+        except Exception as exc:
+
+            print(
+                "ResumeRating: Gemini FAILED:",
+                repr(exc),
+                flush=True,
+            )
+
+            raise
 
 
 resume_rater = ResumeRater()
