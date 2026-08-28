@@ -999,11 +999,54 @@ class CareerAnalysisService:
         try:
 
             unified_result = (
-                unified_service.analyze(
-                    resume=resume_result,
-                    linkedin=linkedin_result,
-                    github=github_result,
-                    leetcode=leetcode_result,
+                unified_service.build_profile(
+                    resume=(
+                        resume_result.get(
+                            "profile"
+                        )
+                        if resume_result
+                        else None
+                    ),
+
+                    github_profile=(
+                        github_result.get(
+                            "profile"
+                        )
+                        if github_result
+                        else None
+                    ),
+
+                    github_analysis=(
+                        github_result.get(
+                            "analysis"
+                        )
+                        if github_result
+                        else None
+                    ),
+
+                    linkedin_profile=(
+                        linkedin_result.get(
+                            "profile"
+                        )
+                        if linkedin_result
+                        else None
+                    ),
+
+                    linkedin_analysis=(
+                        linkedin_result.get(
+                            "analysis"
+                        )
+                        if linkedin_result
+                        else None
+                    ),
+
+                    leetcode_analysis=(
+                        leetcode_result.get(
+                            "analysis"
+                        )
+                        if leetcode_result
+                        else None
+                    ),
                 )
             )
 
