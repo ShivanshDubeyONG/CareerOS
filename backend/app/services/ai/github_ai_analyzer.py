@@ -88,7 +88,7 @@ class GitHubAIAnalyzer:
             ]
 
             # --------------------------------------------------
-            # Tests
+            # Test files
             # --------------------------------------------------
 
             test_files = (
@@ -129,7 +129,7 @@ class GitHubAIAnalyzer:
             )
 
             # --------------------------------------------------
-            # Evidence
+            # Repository evidence
             # --------------------------------------------------
 
             evidence = {
@@ -295,7 +295,7 @@ class GitHubAIAnalyzer:
         )
 
         # ==================================================
-        # PROMPT
+        # GEMINI PROMPT
         # ==================================================
 
         prompt = f"""
@@ -310,8 +310,6 @@ tests, users, or achievements.
 Do NOT assume README claims are implemented.
 
 Judge each repository based on actual evidence.
-
-Return the required GitHubAIAnalysis structured object.
 
 Candidate username:
 {profile.username}
@@ -366,125 +364,309 @@ Low-confidence evidence includes:
 Only call a technology demonstrated when repository evidence
 supports it.
 
+For every meaningful technology, identify:
+
+- technology
+- evidence sources
+- confidence
+
+Confidence must be one of:
+
+- high
+- medium
+- low
+
+Evidence sources may include:
+
+- language
+- dependency
+- dependency_file
+- source_structure
+- configuration
+- docker
+- frontend_structure
+- file_path
+- readme
+- topic
+
 ==================================================
 PROJECT EVALUATION
 ==================================================
 
 For each repository:
 
-- determine whether it is a meaningful project
-- determine project stage
-- determine project type
-- score it from 0 to 10
-- list technologies
-- provide technology evidence
-- explain the assessment
+1. Determine whether it is a meaningful portfolio project.
 
-Project score should prioritize:
+2. Determine the project stage.
 
-1. technical challenge
-2. implementation depth
-3. architecture
-4. functional completeness
-5. meaningful integrations
-6. engineering maturity
-7. originality
-8. usefulness
+Possible stages:
 
-Do NOT lower a strong project simply because it lacks tests,
-Docker, deployment, or other optional engineering practices.
+- learning
+- prototype
+- active_development
+- completed
+- maintained
+- abandoned
 
-Do NOT reward polish over substance.
+3. Determine the project type.
 
-Do NOT reward repository size by itself.
+Examples:
 
-Do NOT reward README claims without implementation evidence.
+- machine_learning
+- backend_service
+- full_stack
+- web_application
+- ai_application
+- data_engineering
+- browser_extension
+- mobile_application
+- developer_tool
+- cli
+- automation
+- library
+- learning_project
 
-A sophisticated student project can legitimately score 8+.
+4. Score the project from 0 to 10.
+
+Use these dimensions:
+
+A. Technical challenge — 20%
+
+Consider:
+
+- algorithmic complexity
+- ML/AI complexity
+- backend/system complexity
+- data processing
+- architecture
+- external APIs
+- engineering constraints
+
+B. Implementation depth — 20%
+
+Consider:
+
+- substantive implementation
+- application logic
+- model implementation
+- data pipelines
+- APIs
+- reusable modules
+- error handling
+- actual functionality
+
+Do NOT equate repository size with implementation depth.
+
+C. Architecture and system design — 15%
+
+Consider:
+
+- modularity
+- separation of concerns
+- service boundaries
+- reusable components
+- data flow
+- API structure
+- maintainability
+
+D. Functional completeness — 15%
+
+Consider:
+
+- whether the main problem is actually solved
+- whether core workflows are implemented
+- whether components connect correctly
+- whether the project represents a usable system
+
+A prototype can still score highly if it is technically substantial.
+
+E. Integrations and technical sophistication — 10%
+
+Reward meaningful integration of:
+
+- external APIs
+- LLMs
+- databases
+- authentication
+- ML models
+- third-party services
+- frontend/backend systems
+- data pipelines
+
+Only reward integrations supported by evidence.
+
+F. Engineering maturity — 10%
+
+Consider:
+
+- testing
+- dependency management
+- configuration
+- logging
+- error handling
+- CI/CD
+- Docker
+- documentation
+- code organization
+
+Missing tests or Docker should NOT destroy an otherwise
+technically strong project.
+
+G. Originality and ownership — 5%
+
+Consider:
+
+- original problem selection
+- personal implementation
+- unique features
+- meaningful modifications
+
+Tutorials and untouched forks should score poorly.
+
+H. Real-world usefulness — 5%
+
+Consider:
+
+- practical problem solved
+- usefulness to users
+- applicability outside tutorials
+- meaningful automation/productivity value
+
+==================================================
+SCORING CALIBRATION
+==================================================
+
+9.0–10.0:
+
+Exceptional student/early-career project with substantial
+technical challenge, deep implementation, strong architecture,
+meaningful functionality and clear ownership.
+
+8.0–8.9:
+
+Very strong project clearly beyond a basic tutorial.
+
+7.0–7.9:
+
+Strong project with meaningful implementation and good depth,
+but with noticeable limitations.
+
+6.0–6.9:
+
+Solid project that is functional and meaningful but relatively
+standard or limited in depth.
+
+5.0–5.9:
+
+Moderate project with useful implementation but limited depth.
+
+4.0–4.9:
+
+Weak project that is basic, incomplete, highly tutorial-like,
+or shallow.
+
+0.0–3.9:
+
+Very weak portfolio project, trivial implementation,
+placeholder work, or extremely incomplete.
+
+IMPORTANT:
+
+- Missing tests do NOT automatically mean a low score.
+- Missing Docker does NOT automatically mean a low score.
+- Deployment is NOT required for a high score.
+- A sophisticated student project can score 8+.
+- Prototype is a project stage, not a quality score.
+- Do not reward repository size by itself.
+- Do not reward README claims without supporting evidence.
+- Do not penalize the same missing feature multiple times.
+- Missing evidence means unknown, not false.
+- Do not invent planned features.
+- Judge projects according to what they actually attempt to accomplish.
 
 ==================================================
 TUTORIALS AND FORKS
 ==================================================
 
-Tutorial or learning repositories should generally not count
-as meaningful portfolio projects unless there is substantial
-original work.
+Tutorial or learning repositories should generally be:
+
+meaningful_project = false
+
+unless there is strong evidence of substantial original work.
 
 A fork is not automatically bad.
 
-Use fork contribution evidence where available.
+Use:
+
+- unique commits
+- changed files
+- additions
+- deletions
+
+to determine whether meaningful original contribution exists.
 
 ==================================================
-GENERAL RULE
+ACTIVITY
 ==================================================
 
-Base everything ONLY on the supplied evidence.
+Do not confuse activity with quality.
 
-Missing evidence means unknown.
+Recent commits do not automatically mean high quality.
 
-Never invent:
+Frequent commits do not automatically mean strong engineering.
 
-- technologies
-- deployments
-- tests
-- databases
-- features
-- users
-- production usage
-- performance metrics
-- contributions
+Inactivity does not automatically mean low quality if the project
+appears complete.
+
+==================================================
+FINAL RESPONSE FORMAT
+==================================================
 
 Return ONLY valid JSON.
-Do not use markdown.
-Do not wrap the JSON in ```json fences.
 
-The JSON must match this exact structure:
+Do NOT use markdown.
 
-{
-  "projects": [],
-  "technical_strengths": [],
-  "demonstrated_skills": [],
-  "evidence_gaps": [],
-  "overall_assessment": "",
-  "career_relevance": "",
-  "recommendations": []
-}
+Do NOT wrap the response in ```json fences.
 
-Each project must contain:
+The top-level JSON object MUST contain:
 
-{
-  "repository": "",
-  "meaningful_project": true,
-  "project_score": 0,
-  "project_stage": "",
-  "project_type": "",
-  "technologies": [],
-  "technology_evidence": [],
-  "assessment": ""
-}
+projects
+technical_strengths
+demonstrated_skills
+evidence_gaps
+overall_assessment
+career_relevance
+recommendations
 
-Each technology_evidence item must contain:
+Each project MUST contain:
 
-{
-  "technology": "",
-  "evidence_sources": [],
-  "confidence": ""
-}
+repository
+meaningful_project
+project_score
+project_stage
+project_type
+technologies
+technology_evidence
+assessment
 
-Each demonstrated_skills item must contain:
+Each technology_evidence item MUST contain:
 
-{
-  "skill": "",
-  "confidence": "",
-  "evidence": ""
-}
+technology
+evidence_sources
+confidence
 
-Each evidence_gaps item must contain:
+Each demonstrated_skills item MUST contain:
 
-{
-  "area": "",
-  "reason": ""
-}
+skill
+confidence
+evidence
+
+Each evidence_gaps item MUST contain:
+
+area
+reason
+
+Return JSON only.
 """
 
         # ==================================================
@@ -498,10 +680,51 @@ Each evidence_gaps item must contain:
 
         try:
 
+            raw_response = (
+                self.gemini.generate_text(
+                    prompt
+                )
+            )
+
+            print(
+                "GH AI raw response received",
+                flush=True,
+            )
+
+            # ----------------------------------------------
+            # Remove accidental markdown fences if Gemini
+            # ignores the instruction and returns them.
+            # ----------------------------------------------
+
+            cleaned_response = (
+                raw_response.strip()
+            )
+
+            if (
+                cleaned_response.startswith(
+                    "```"
+                )
+            ):
+
+                cleaned_response = (
+                    cleaned_response
+                    .replace(
+                        "```json",
+                        "",
+                        1,
+                    )
+                    .replace(
+                        "```",
+                        "",
+                        1,
+                    )
+                    .strip()
+                )
+
             result = (
-                self.gemini.generate_structured(
-                    prompt,
-                    GitHubAIAnalysis,
+                GitHubAIAnalysis
+                .model_validate_json(
+                    cleaned_response
                 )
             )
 
