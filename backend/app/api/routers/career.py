@@ -1,6 +1,7 @@
 import os
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from starlette.concurrency import run_in_threadpool
 
 from app.services.career.career_analysis_service import (
     career_analysis_service,
@@ -8,6 +9,7 @@ from app.services.career.career_analysis_service import (
 from app.services.resume_service import (
     resume_service,
 )
+
 
 router = APIRouter(
     prefix="/career",
@@ -33,7 +35,6 @@ async def analyze_career(
     """
 
     if not file.filename:
-
         raise HTTPException(
             status_code=400,
             detail="No file provided.",
@@ -47,7 +48,6 @@ async def analyze_career(
         ".pdf",
         ".docx",
     }:
-
         raise HTTPException(
             status_code=400,
             detail=(
@@ -61,7 +61,6 @@ async def analyze_career(
     # ==================================================
 
     try:
-
         upload_result = (
             await resume_service.upload_resume(
                 file
@@ -69,11 +68,9 @@ async def analyze_career(
         )
 
     except HTTPException:
-
         raise
 
     except Exception as exc:
-
         import traceback
 
         traceback.print_exc()
@@ -83,9 +80,7 @@ async def analyze_career(
             detail="Failed to upload resume.",
         ) from exc
 
-    resume_id = (
-        upload_result.file_id
-    )
+    resume_id = upload_result.file_id
 
     pdf_path = os.path.join(
         resume_service.upload_dir,
@@ -98,15 +93,12 @@ async def analyze_career(
     )
 
     if os.path.exists(pdf_path):
-
         resume_path = pdf_path
 
     elif os.path.exists(docx_path):
-
         resume_path = docx_path
 
     else:
-
         raise HTTPException(
             status_code=500,
             detail=(
@@ -118,18 +110,22 @@ async def analyze_career(
 
     # ==================================================
     # FULL CAREER INTELLIGENCE
+    #
+    # IMPORTANT:
+    # career_analysis_service.analyze() is synchronous
+    # and performs blocking network/API work.
+    #
+    # Run it in a worker thread so the FastAPI event
+    # loop remains responsive to Render health checks.
     # ==================================================
 
     try:
-
-        result = (
-            career_analysis_service.analyze(
-                resume_path
-            )
+        result = await run_in_threadpool(
+            career_analysis_service.analyze,
+            resume_path,
         )
 
     except Exception as exc:
-
         import traceback
 
         traceback.print_exc()
