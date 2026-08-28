@@ -1,6 +1,6 @@
 # CareerOS
 
-> *Your career data is scattered everywhere. CareerOS puts the pieces together.*
+*Your career data is scattered everywhere. CareerOS puts the pieces together.*
 
 **[LIVE DEMO](https://careeros-yp7y.onrender.com)**
 
