@@ -1,10 +1,8 @@
 import json
 
 from app.services.ai.gemini_client import GeminiClient
-from app.services.github.github_scoring import GitHubScorer
 
 from app.schemas.github_ai_schema import GitHubAIAnalysis
-from app.schemas.github_score_schema import GitHubPortfolioScore
 from app.schemas.github_schema import GitHubProfile
 
 
@@ -12,7 +10,6 @@ class GitHubAIAnalyzer:
 
     def __init__(self):
         self.gemini = GeminiClient()
-        self.scorer = GitHubScorer()
 
     def analyze(
         self,
@@ -279,14 +276,3 @@ Evidence:
         )
 
         return result
-
-    def score(
-        self,
-        profile: GitHubProfile,
-        analysis: GitHubAIAnalysis,
-    ) -> GitHubPortfolioScore:
-
-        return self.scorer.score(
-            profile,
-            analysis.projects,
-        )
