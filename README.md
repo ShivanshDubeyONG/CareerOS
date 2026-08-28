@@ -2,7 +2,7 @@
 
 > *Your career data is scattered everywhere. CareerOS puts the pieces together.*
 
-[![Live Demo](https://img.shields.io/badge/Live-Demo-2dd4a8?style=for-the-badge)](https://careeros-yp7y.onrender.com)
+**[LIVE DEMO](https://careeros-yp7y.onrender.com)**
 
 CareerOS is an AI-powered career intelligence platform that analyzes a candidate's professional footprint across multiple sources and turns it into an evidence-backed career profile.
 
