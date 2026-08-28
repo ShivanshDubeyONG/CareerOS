@@ -1,3 +1,5 @@
+import json
+
 from app.services.ai.gemini_client import GeminiClient
 from app.services.ai.github_scoring import GitHubScorer
 
@@ -28,20 +30,64 @@ class GitHubAIAnalyzer:
 
         repository_evidence = []
 
+        # --------------------------------------------------
+        # Safety limits for LLM payload size.
+        #
+        # The repository itself is still analyzed fully by
+        # the GitHub pipeline. These limits only control how
+        # much raw text/path data gets sent to Gemini.
+        # --------------------------------------------------
+
+        MAX_FILE_PATHS_FOR_AI = 300
+        MAX_README_CHARS_FOR_AI = 12000
+
         for repository in profile.repositories:
 
+            readme = (
+                repository.readme
+                or ""
+            )
+
+            if len(readme) > MAX_README_CHARS_FOR_AI:
+
+                readme = (
+                    readme[
+                        :MAX_README_CHARS_FOR_AI
+                    ]
+                    + "\n\n[README truncated for AI analysis]"
+                )
+
+            file_paths = (
+                repository.file_paths
+                or []
+            )
+
+            if len(file_paths) > MAX_FILE_PATHS_FOR_AI:
+
+                file_paths = (
+                    file_paths[
+                        :MAX_FILE_PATHS_FOR_AI
+                    ]
+                )
+
             evidence = {
+
                 "name": repository.name,
+
                 "full_name": repository.full_name,
+
                 "description": repository.description,
+
                 "url": repository.url,
 
                 "language": repository.language,
+
                 "languages": repository.languages,
 
                 "topics": repository.topics,
 
                 "stars": repository.stars,
+
                 "forks": repository.forks,
 
                 "is_fork": repository.is_fork,
@@ -51,6 +97,7 @@ class GitHubAIAnalyzer:
                 ),
 
                 "fork_contribution": {
+
                     "available": (
                         repository
                         .fork_contribution_available
@@ -77,10 +124,7 @@ class GitHubAIAnalyzer:
                     ),
                 },
 
-                "readme": (
-                    repository.readme
-                    or ""
-                ),
+                "readme": readme,
 
                 "dependencies": (
                     repository.dependencies
@@ -90,9 +134,7 @@ class GitHubAIAnalyzer:
                     repository.dependency_files
                 ),
 
-                "file_paths": (
-                    repository.file_paths
-                ),
+                "file_paths": file_paths,
 
                 "source_directories": (
                     repository.source_directories
@@ -119,6 +161,7 @@ class GitHubAIAnalyzer:
                 ),
 
                 "activity": {
+
                     "commit_history_available": (
                         repository
                         .commit_history_available
@@ -160,6 +203,7 @@ class GitHubAIAnalyzer:
                 },
 
                 "dates": {
+
                     "created_at": (
                         repository.created_at
                     ),
@@ -177,6 +221,31 @@ class GitHubAIAnalyzer:
             repository_evidence.append(
                 evidence
             )
+
+        # --------------------------------------------------
+        # Measure the payload before sending it to Gemini.
+        # --------------------------------------------------
+
+        try:
+
+            evidence_json = json.dumps(
+                repository_evidence,
+                ensure_ascii=False,
+            )
+
+            evidence_size = len(
+                evidence_json
+            )
+
+        except Exception:
+
+            evidence_size = 0
+
+        print(
+            f"GH AI evidence size: "
+            f"{evidence_size:,} chars",
+            flush=True,
+        )
 
         prompt = f"""
 You are the GitHub intelligence engine for CareerOS.
@@ -401,6 +470,7 @@ not merely the presence or absence of engineering extras.
 Evaluate the project using this rubric:
 
 A. TECHNICAL CHALLENGE — 20%
+
 How technically difficult is the actual problem being solved?
 
 Consider:
@@ -414,6 +484,7 @@ Consider:
 - non-trivial engineering constraints
 
 B. IMPLEMENTATION DEPTH — 20%
+
 How much meaningful implementation exists?
 
 Consider:
@@ -429,6 +500,7 @@ Consider:
 Do NOT equate repository size with implementation depth.
 
 C. ARCHITECTURE & SYSTEM DESIGN — 15%
+
 Evaluate how thoughtfully the system is structured.
 
 Consider:
@@ -442,6 +514,7 @@ Consider:
 - appropriate technology choices
 
 D. FUNCTIONAL COMPLETENESS — 15%
+
 How complete is the implemented project?
 
 Consider:
@@ -657,10 +730,28 @@ Return the structured response exactly according
 to the provided schema.
 """
 
-        return self.gemini.generate_structured(
-            prompt,
-            GitHubAIAnalysis,
+        # --------------------------------------------------
+        # Gemini request
+        # --------------------------------------------------
+
+        print(
+            "GH AI Gemini request START",
+            flush=True,
         )
+
+        result = (
+            self.gemini.generate_structured(
+                prompt,
+                GitHubAIAnalysis,
+            )
+        )
+
+        print(
+            "GH AI Gemini request DONE",
+            flush=True,
+        )
+
+        return result
 
     def score(
         self,
