@@ -1515,11 +1515,11 @@ class UnifiedService:
                 None,
             )
 
-            linkedin_text_parts = []
-
 # ==================================================
 # RAW LINKEDIN PROFILE EVIDENCE
 # ==================================================
+
+        linkedin_text_parts = []
 
         if linkedin_profile:
 
