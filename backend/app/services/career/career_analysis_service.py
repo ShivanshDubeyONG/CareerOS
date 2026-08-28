@@ -10,6 +10,7 @@ from app.services.resume.resume_rater import resume_rater
 from app.integrations.github.github_client import GitHubClient
 from app.integrations.github.github_analyzer import GitHubAnalyzer
 from app.services.ai.github_ai_analyzer import GitHubAIAnalyzer
+
 from app.schemas.github_schema import (
     GitHubProfile,
     GitHubRepository,
@@ -40,6 +41,7 @@ from app.services.unified.unified_service import (
 class CareerAnalysisService:
 
     def __init__(self):
+
         self.github_client = GitHubClient()
         self.github_analyzer = GitHubAnalyzer()
         self.github_ai = GitHubAIAnalyzer()
@@ -154,7 +156,7 @@ class CareerAnalysisService:
         ]
 
         # --------------------------------------------------
-        # Most recently updated repositories first.
+        # Most recently updated first.
         # --------------------------------------------------
 
         repositories_data = sorted(
@@ -447,104 +449,137 @@ class CareerAnalysisService:
             # Build repository object
             # --------------------------------------------------
 
-            repository = GitHubRepository(
+            print(
+                f"GH BUILD repository START "
+                f"{repo_name}",
+                flush=True,
+            )
 
-                name=repo["name"],
+            try:
 
-                full_name=repo["full_name"],
+                repository = GitHubRepository(
 
-                description=repo.get(
-                    "description"
-                ),
+                    name=repo["name"],
 
-                url=repo["html_url"],
+                    full_name=repo["full_name"],
 
-                language=repo.get(
-                    "language"
-                ),
+                    description=repo.get(
+                        "description"
+                    ),
 
-                languages=languages,
+                    url=repo["html_url"],
 
-                stars=repo.get(
-                    "stargazers_count",
-                    0,
-                ),
+                    language=repo.get(
+                        "language"
+                    ),
 
-                forks=repo.get(
-                    "forks_count",
-                    0,
-                ),
+                    languages=languages,
 
-                topics=repo.get(
-                    "topics",
-                    [],
-                ),
+                    stars=repo.get(
+                        "stargazers_count",
+                        0,
+                    ),
 
-                is_fork=repo.get(
-                    "fork",
-                    False,
-                ),
+                    forks=repo.get(
+                        "forks_count",
+                        0,
+                    ),
 
-                is_archived=repo.get(
-                    "archived",
-                    False,
-                ),
+                    topics=repo.get(
+                        "topics",
+                        [],
+                    ),
 
-                default_branch=repo.get(
-                    "default_branch"
-                ),
+                    is_fork=repo.get(
+                        "fork",
+                        False,
+                    ),
 
-                created_at=repo.get(
-                    "created_at"
-                ),
+                    is_archived=repo.get(
+                        "archived",
+                        False,
+                    ),
 
-                updated_at=repo.get(
-                    "updated_at"
-                ),
+                    default_branch=repo.get(
+                        "default_branch"
+                    ),
 
-                readme=readme,
+                    created_at=repo.get(
+                        "created_at"
+                    ),
 
-                dependencies=dependencies,
+                    updated_at=repo.get(
+                        "updated_at"
+                    ),
 
-                dependency_files=dependency_names,
+                    readme=readme,
 
-                file_paths=file_paths,
+                    dependencies=dependencies,
 
-                source_directories=(
-                    structure[
-                        "source_directories"
-                    ]
-                ),
+                    dependency_files=dependency_names,
 
-                test_files=(
-                    structure[
-                        "test_files"
-                    ]
-                ),
+                    file_paths=file_paths,
 
-                config_files=(
-                    structure[
-                        "config_files"
-                    ]
-                ),
+                    source_directories=(
+                        structure.get(
+                            "source_directories",
+                            [],
+                        )
+                    ),
 
-                has_docker=(
-                    structure[
-                        "has_docker"
-                    ]
-                ),
+                    test_files=(
+                        structure.get(
+                            "test_files",
+                            [],
+                        )
+                    ),
 
-                has_frontend=(
-                    structure[
-                        "has_frontend"
-                    ]
-                ),
+                    config_files=(
+                        structure.get(
+                            "config_files",
+                            [],
+                        )
+                    ),
 
-                has_tests=(
-                    structure[
-                        "has_tests"
-                    ]
-                ),
+                    has_docker=(
+                        structure.get(
+                            "has_docker",
+                            False,
+                        )
+                    ),
+
+                    has_frontend=(
+                        structure.get(
+                            "has_frontend",
+                            False,
+                        )
+                    ),
+
+                    has_tests=(
+                        structure.get(
+                            "has_tests",
+                            False,
+                        )
+                    ),
+                )
+
+            except Exception as exc:
+
+                print(
+                    f"GH BUILD repository FAILED "
+                    f"{repo_name}: "
+                    f"{exc!r}",
+                    flush=True,
+                )
+
+                traceback.print_exc()
+
+                continue
+
+            print(
+                f"GH BUILD repository DONE "
+                f"{repo_name}",
+                flush=True,
             )
 
             repositories.append(
@@ -561,42 +596,71 @@ class CareerAnalysisService:
         # BUILD GITHUB PROFILE
         # ==================================================
 
-        github_profile = GitHubProfile(
+        print(
+            "GH BUILD profile START",
+            flush=True,
+        )
 
-            username=profile_data[
-                "login"
-            ],
+        try:
 
-            name=profile_data.get(
-                "name"
-            ),
+            github_profile = GitHubProfile(
 
-            bio=profile_data.get(
-                "bio"
-            ),
-
-            profile_url=profile_data[
-                "html_url"
-            ],
-
-            public_repository_count=(
-                profile_data.get(
-                    "public_repos",
-                    0,
+                username=profile_data.get(
+                    "login"
                 )
-            ),
+                or username,
 
-            followers=profile_data.get(
-                "followers",
-                0,
-            ),
+                name=profile_data.get(
+                    "name"
+                ),
 
-            following=profile_data.get(
-                "following",
-                0,
-            ),
+                bio=profile_data.get(
+                    "bio"
+                ),
 
-            repositories=repositories,
+                profile_url=profile_data.get(
+                    "html_url"
+                )
+                or (
+                    f"https://github.com/"
+                    f"{username}"
+                ),
+
+                public_repository_count=(
+                    profile_data.get(
+                        "public_repos",
+                        0,
+                    )
+                ),
+
+                followers=profile_data.get(
+                    "followers",
+                    0,
+                ),
+
+                following=profile_data.get(
+                    "following",
+                    0,
+                ),
+
+                repositories=repositories,
+            )
+
+        except Exception as exc:
+
+            print(
+                "GH BUILD profile FAILED:",
+                repr(exc),
+                flush=True,
+            )
+
+            traceback.print_exc()
+
+            raise
+
+        print(
+            "GH BUILD profile DONE",
+            flush=True,
         )
 
         # ==================================================
@@ -608,11 +672,25 @@ class CareerAnalysisService:
             flush=True,
         )
 
-        analysis = (
-            self.github_ai.analyze(
-                github_profile
+        try:
+
+            analysis = (
+                self.github_ai.analyze(
+                    github_profile
+                )
             )
-        )
+
+        except Exception as exc:
+
+            print(
+                "GH 9: GitHub AI analysis FAILED:",
+                repr(exc),
+                flush=True,
+            )
+
+            traceback.print_exc()
+
+            raise
 
         print(
             "GH 10: GitHub AI analysis DONE",
@@ -824,31 +902,22 @@ class CareerAnalysisService:
             try:
 
                 github_username = (
-                    self._extract_username(
-                        resume.links.github
+                    resume.links.github
+                    .rstrip("/")
+                    .split("/")
+                    [-1]
+                )
+
+                github_result = (
+                    self.analyze_github(
+                        github_username
                     )
                 )
 
-                if github_username:
-
-                    github_result = (
-                        self.analyze_github(
-                            github_username
-                        )
-                    )
-
-                    print(
-                        "STEP 3: GitHub DONE",
-                        flush=True,
-                    )
-
-                else:
-
-                    print(
-                        "STEP 3: GitHub SKIPPED "
-                        "(username not found)",
-                        flush=True,
-                    )
+                print(
+                    "STEP 3: GitHub DONE",
+                    flush=True,
+                )
 
             except Exception as exc:
 
@@ -884,31 +953,22 @@ class CareerAnalysisService:
             try:
 
                 leetcode_username = (
-                    self._extract_username(
-                        resume.links.leetcode
+                    resume.links.leetcode
+                    .rstrip("/")
+                    .split("/")
+                    [-1]
+                )
+
+                leetcode_result = (
+                    self.analyze_leetcode(
+                        leetcode_username
                     )
                 )
 
-                if leetcode_username:
-
-                    leetcode_result = (
-                        self.analyze_leetcode(
-                            leetcode_username
-                        )
-                    )
-
-                    print(
-                        "STEP 4: LeetCode DONE",
-                        flush=True,
-                    )
-
-                else:
-
-                    print(
-                        "STEP 4: LeetCode SKIPPED "
-                        "(username not found)",
-                        flush=True,
-                    )
+                print(
+                    "STEP 4: LeetCode DONE",
+                    flush=True,
+                )
 
             except Exception as exc:
 
@@ -928,7 +988,7 @@ class CareerAnalysisService:
             )
 
         # ==================================================
-        # 5. UNIFIED EVIDENCE
+        # 5. UNIFIED ANALYSIS
         # ==================================================
 
         print(
@@ -936,57 +996,37 @@ class CareerAnalysisService:
             flush=True,
         )
 
-        unified_profile = (
-            unified_service.build_profile(
+        try:
 
-                resume=resume,
-
-                github_profile=(
-                    github_result[
-                        "profile"
-                    ]
-                    if github_result
-                    else None
-                ),
-
-                github_analysis=(
-                    github_result[
-                        "analysis"
-                    ]
-                    if github_result
-                    else None
-                ),
-
-                linkedin_profile=(
-                    linkedin_result[
-                        "profile"
-                    ]
-                    if linkedin_result
-                    else None
-                ),
-
-                linkedin_analysis=(
-                    linkedin_result[
-                        "analysis"
-                    ]
-                    if linkedin_result
-                    else None
-                ),
-
-                leetcode_analysis=(
-                    leetcode_result[
-                        "analysis"
-                    ]
-                    if leetcode_result
-                    else None
-                ),
+            unified_result = (
+                unified_service.analyze(
+                    resume=resume_result,
+                    linkedin=linkedin_result,
+                    github=github_result,
+                    leetcode=leetcode_result,
+                )
             )
-        )
 
-        print(
-            "STEP 5: Unified analysis DONE",
-            flush=True,
-        )
+            print(
+                "STEP 5: Unified analysis DONE",
+                flush=True,
+            )
+
+        except Exception as exc:
+
+            print(
+                "STEP 5: Unified analysis FAILED:",
+                repr(exc),
+                flush=True,
+            )
+
+            traceback.print_exc()
+
+            unified_result = None
+
+        # ==================================================
+        # FINAL RESPONSE
+        # ==================================================
 
         print(
             "=== CAREER ANALYSIS COMPLETE ===",
@@ -995,59 +1035,11 @@ class CareerAnalysisService:
 
         return {
             "resume": resume_result,
+            "linkedin": linkedin_result,
             "github": github_result,
             "leetcode": leetcode_result,
-            "linkedin": linkedin_result,
-            "unified": unified_profile,
+            "unified": unified_result,
         }
-
-    # ==================================================
-    # URL → USERNAME
-    # ==================================================
-
-    @staticmethod
-    def _extract_username(
-        url,
-    ):
-
-        if not url:
-            return None
-
-        value = url.rstrip(
-            "/"
-        )
-
-        username = value.split(
-            "/"
-        )[-1]
-
-        return (
-            username
-            if username
-            else None
-        )
-
-    # ==================================================
-    # CLOSE CLIENTS
-    # ==================================================
-
-    def close(self):
-
-        try:
-
-            self.github_client.close()
-
-        except Exception:
-
-            pass
-
-        try:
-
-            self.leetcode_client.close()
-
-        except Exception:
-
-            pass
 
 
 career_analysis_service = (
