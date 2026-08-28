@@ -266,6 +266,47 @@ class GeminiClient:
     # STRUCTURED GENERATION
     # ==================================================
 
+
+    @staticmethod
+    def _flatten_schema(schema: dict) -> dict:
+        """
+        Convert Pydantic's $defs/$ref JSON Schema into an inline
+        schema compatible with Gemini's structured-output schema.
+        """
+
+        defs = schema.pop("$defs", {})
+
+        def resolve(node):
+            if not isinstance(node, dict):
+                return node
+
+            ref = node.pop("$ref", None)
+
+            if ref:
+                name = ref.split("/")[-1]
+
+                if name in defs:
+                    replacement = resolve(
+                        dict(defs[name])
+                    )
+                    node.update(replacement)
+
+            for key, value in list(node.items()):
+                if isinstance(value, dict):
+                    node[key] = resolve(value)
+
+                elif isinstance(value, list):
+                    node[key] = [
+                        resolve(item)
+                        if isinstance(item, dict)
+                        else item
+                        for item in value
+                    ]
+
+            return node
+
+        return resolve(schema)
+    
     def generate_structured(
         self,
         prompt: str,
@@ -312,17 +353,17 @@ class GeminiClient:
 
             try:
 
+                schema = self._flatten_schema(
+    response_schema.model_json_schema()
+)
+
                 response = (
                     self.client.models.generate_content(
                         model=self.model,
                         contents=prompt,
                         config=types.GenerateContentConfig(
-                            response_mime_type=(
-                                "application/json"
-                            ),
-                            response_schema=(
-                                response_schema
-                            ),
+                            response_mime_type="application/json",
+                            response_schema=schema,
                         ),
                     )
                 )
