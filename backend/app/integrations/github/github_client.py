@@ -4,6 +4,9 @@ import os
 from typing import Optional
 
 import httpx
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class GitHubClient:

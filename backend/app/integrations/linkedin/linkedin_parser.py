@@ -663,10 +663,6 @@ class LinkedInParser:
 
         return experiences
 
-    # ==================================================
-    # API EDUCATION
-    # ==================================================
-
     @classmethod
     def _parse_api_education(
         cls,
@@ -725,10 +721,6 @@ class LinkedInParser:
             )
 
         return education
-
-    # ==================================================
-    # API CERTIFICATIONS
-    # ==================================================
 
     @classmethod
     def _parse_api_certifications(
@@ -793,10 +785,6 @@ class LinkedInParser:
 
         return certifications
 
-    # ==================================================
-    # API PROJECTS
-    # ==================================================
-
     @classmethod
     def _parse_api_projects(
         cls,
@@ -844,10 +832,6 @@ class LinkedInParser:
             )
 
         return projects
-
-    # ==================================================
-    # API SKILLS
-    # ==================================================
 
     @classmethod
     def _parse_api_skills(
@@ -899,10 +883,6 @@ class LinkedInParser:
         return list(
             dict.fromkeys(skills)
         )
-
-    # ==================================================
-    # API LANGUAGES
-    # ==================================================
 
     @classmethod
     def _parse_api_languages(
@@ -957,10 +937,6 @@ class LinkedInParser:
 
         return languages
 
-    # ==================================================
-    # API ORGANIZATIONS
-    # ==================================================
-
     @classmethod
     def _parse_api_organizations(
         cls,
@@ -1008,10 +984,6 @@ class LinkedInParser:
             )
 
         return organizations
-
-    # ==================================================
-    # API AWARDS
-    # ==================================================
 
     @classmethod
     def _parse_api_awards(
@@ -1066,10 +1038,6 @@ class LinkedInParser:
             )
 
         return awards
-
-    # ==================================================
-    # API PUBLICATIONS
-    # ==================================================
 
     @classmethod
     def _parse_api_publications(
@@ -1126,10 +1094,6 @@ class LinkedInParser:
             )
 
         return publications
-
-    # ==================================================
-    # API VOLUNTEERING
-    # ==================================================
 
     @classmethod
     def _parse_api_volunteering(
@@ -1193,11 +1157,7 @@ class LinkedInParser:
             )
 
         return volunteering
-
-    # ==================================================
-    # API LINKS
-    # ==================================================
-
+    
     @classmethod
     def _parse_api_links(
         cls,
@@ -1248,10 +1208,6 @@ class LinkedInParser:
         return list(
             dict.fromkeys(links)
         )
-
-    # ==================================================
-    # API RESPONSE → CANONICAL PROFILE
-    # ==================================================
 
     @classmethod
     def parse_api_response(

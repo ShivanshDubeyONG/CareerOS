@@ -168,10 +168,6 @@ class LinkedInService:
             for skill in skills
         ]
 
-    # ==================================================
-    # CAREER SIGNALS
-    # ==================================================
-
     def _build_career_signals(
         self,
         profile: LinkedInProfile,

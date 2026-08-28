@@ -110,10 +110,6 @@ class CareerAnalysisService:
             owner = repo["owner"]["login"]
             repo_name = repo["name"]
 
-            # ------------------------------------------
-            # Languages
-            # ------------------------------------------
-
             try:
 
                 languages = (
@@ -128,10 +124,6 @@ class CareerAnalysisService:
 
                 languages = {}
 
-            # ------------------------------------------
-            # README
-            # ------------------------------------------
-
             try:
 
                 readme = (
@@ -145,10 +137,6 @@ class CareerAnalysisService:
             except Exception:
 
                 readme = None
-
-            # ------------------------------------------
-            # Dependency files
-            # ------------------------------------------
 
             dependency_data = {}
             dependency_names = []
@@ -200,26 +188,6 @@ class CareerAnalysisService:
                 set(dependencies)
             )
 
-            # ------------------------------------------
-            # Repository structure
-            # ------------------------------------------
-            #
-            # Pull the complete repository tree so the
-            # GitHub analyzer can see:
-            #
-            # - source directories
-            # - tests
-            # - configuration files
-            # - Docker files
-            # - frontend structure
-            # - actual file paths
-            #
-            # This is important because the AI analyzer
-            # should reason from the real repository
-            # architecture rather than README/language
-            # statistics alone.
-            # ------------------------------------------
-
             file_paths = []
 
             try:
@@ -245,10 +213,6 @@ class CareerAnalysisService:
                     file_paths
                 )
             )
-
-            # ------------------------------------------
-            # Build repository model
-            # ------------------------------------------
 
             repository = GitHubRepository(
 
@@ -311,10 +275,6 @@ class CareerAnalysisService:
 
                 dependency_files=dependency_names,
 
-                # --------------------------------------
-                # Repository structure evidence
-                # --------------------------------------
-
                 file_paths=file_paths,
 
                 source_directories=structure[
@@ -345,10 +305,6 @@ class CareerAnalysisService:
             repositories.append(
                 repository
             )
-
-        # ------------------------------------------
-        # GitHub profile
-        # ------------------------------------------
 
         github_profile = GitHubProfile(
 
@@ -385,10 +341,6 @@ class CareerAnalysisService:
 
             repositories=repositories,
         )
-
-        # ------------------------------------------
-        # AI analysis
-        # ------------------------------------------
 
         analysis = self.github_ai.analyze(
             github_profile
@@ -639,10 +591,6 @@ class CareerAnalysisService:
             if username
             else None
         )
-
-    # ==================================================
-    # CLEANUP
-    # ==================================================
 
     def close(self):
 

@@ -1,3 +1,7 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import os
 
 from fastapi import FastAPI
@@ -25,11 +29,6 @@ app = FastAPI(
     ),
 )
 
-
-# --------------------------------------------------
-# CORS
-# --------------------------------------------------
-
 allowed_origins = [
     origin.strip()
     for origin in os.getenv(
@@ -51,10 +50,6 @@ app.add_middleware(
 )
 
 
-# --------------------------------------------------
-# Health / Root
-# --------------------------------------------------
-
 @app.get("/")
 def root():
     return {
@@ -69,10 +64,6 @@ def health():
         "service": "careeros-api",
     }
 
-
-# --------------------------------------------------
-# Routers
-# --------------------------------------------------
 
 app.include_router(
     resume_router

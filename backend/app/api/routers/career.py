@@ -9,7 +9,6 @@ from app.services.resume_service import (
     resume_service,
 )
 
-
 router = APIRouter(
     prefix="/career",
     tags=["Career Intelligence"],
@@ -32,10 +31,6 @@ async def analyze_career(
     - LeetCode
     - Unified cross-source evidence
     """
-
-    # ==================================================
-    # VALIDATION
-    # ==================================================
 
     if not file.filename:
 
@@ -91,10 +86,6 @@ async def analyze_career(
     resume_id = (
         upload_result.file_id
     )
-
-    # ==================================================
-    # RESOLVE STORED FILE
-    # ==================================================
 
     pdf_path = os.path.join(
         resume_service.upload_dir,

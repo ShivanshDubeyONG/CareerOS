@@ -40,11 +40,7 @@ class LeetCodeService:
             profile.hard_solved,
             0,
         )
-
-        # --------------------------------
-        # DIFFICULTY DISTRIBUTION
-        # --------------------------------
-
+        
         if total > 0:
 
             difficulty_distribution = {
@@ -70,10 +66,6 @@ class LeetCodeService:
                 "hard": 0.0,
             }
 
-        # --------------------------------
-        # MEDIUM + HARD
-        # --------------------------------
-
         if total > 0:
 
             medium_hard_ratio = round(
@@ -88,10 +80,6 @@ class LeetCodeService:
         else:
 
             medium_hard_ratio = 0.0
-
-        # --------------------------------
-        # DIFFICULTY EXPOSURE
-        # --------------------------------
 
         if total == 0:
 
@@ -119,10 +107,6 @@ class LeetCodeService:
                 "foundational"
             )
 
-        # --------------------------------
-        # RAW SKILL COUNTS
-        # --------------------------------
-
         skill_counts = {}
 
         for skill in profile.skills:
@@ -144,10 +128,6 @@ class LeetCodeService:
                 )
                 + count
             )
-
-        # --------------------------------
-        # TOP SKILLS
-        # --------------------------------
 
         strongest_skills = [
             skill
@@ -195,10 +175,6 @@ class LeetCodeService:
             if count > 0
         ]
 
-        # --------------------------------
-        # CORE DSA
-        # --------------------------------
-
         dsa_coverage = (
             build_core_dsa_coverage(
                 skill_counts
@@ -231,10 +207,6 @@ class LeetCodeService:
             if data["evidence"]
             == "no_evidence"
         ]
-
-        # --------------------------------
-        # DSA BREADTH SCORE
-        # --------------------------------
 
         breadth_points = 0.0
 
@@ -269,10 +241,6 @@ class LeetCodeService:
 
             dsa_breadth_score = 0.0
 
-        # --------------------------------
-        # PROBLEM SOLVING SCORE
-        # --------------------------------
-
         volume_score = min(
             total / 150,
             1.0,
@@ -297,10 +265,6 @@ class LeetCodeService:
             * 100,
             1,
         )
-
-        # --------------------------------
-        # ACTIVITY
-        # --------------------------------
 
         calendar = (
             profile.submission_calendar
@@ -564,10 +528,6 @@ class LeetCodeService:
             signals.append(
                 "active_in_last_30_days"
             )
-
-        # --------------------------------
-        # RETURN
-        # --------------------------------
 
         return LeetCodeAnalysis(
             username=profile.username,

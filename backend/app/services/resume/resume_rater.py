@@ -325,6 +325,40 @@ across the important dimensions.
 RECOMMENDATIONS
 ==================================================
 
+ACTION PLAN WRITING RULES:
+
+Write recommendations as a practical career coach speaking directly to the user.
+
+- Use simple, clear language that a student or job seeker can understand immediately.
+- Avoid corporate jargon, recruiter-speak, and overly formal language.
+- Every recommendation must clearly explain WHAT the user should do.
+- Prefer specific, actionable advice over vague statements.
+- Mention the specific project, skill, experience, or resume section when relevant.
+- Explain why the recommendation matters in one short sentence.
+- Keep recommendation titles concise and action-oriented.
+- Keep recommendation explanations to 1–2 short sentences.
+- Prefer natural wording such as "Add measurable results to your projects"
+  instead of "Add specific evaluation metrics and dataset details."
+- Do not use phrases such as "technical screeners evaluate..." unless absolutely
+  necessary.
+- Do not invent achievements, metrics, technologies, datasets, or experience.
+- Base recommendations only on evidence present in the user's career data.
+- Prioritize the most impactful improvements first.
+- Write recommendations so the user could immediately turn them into a task.
+
+Example:
+
+Bad:
+"Add specific evaluation metrics and dataset details to the Marks Predictor
+and CareerOS projects."
+
+Better:
+"Add measurable results to your projects."
+
+Explanation:
+"For Marks Predictor and CareerOS, include things like dataset size,
+accuracy, latency, or other real results to show what you achieved."
+
 Recommendations must be:
 
 - specific

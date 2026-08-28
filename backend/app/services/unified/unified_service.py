@@ -529,6 +529,9 @@ class UnifiedService:
         if not analysis:
             return []
 
+        if isinstance(analysis, dict):
+            analysis = GitHubAIAnalysis.model_validate(analysis)
+
         skills = []
 
         # Explicit AI-detected demonstrations.

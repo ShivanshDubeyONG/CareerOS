@@ -4,6 +4,10 @@ import os
 import time
 from pathlib import Path
 
+import httpx
+from dotenv import load_dotenv
+load_dotenv()
+
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -54,10 +58,6 @@ class GeminiClient:
             10,
         ]
 
-        # ==================================================
-        # LOCAL CACHE
-        # ==================================================
-
         self.cache_dir = (
             Path(__file__).resolve().parents[3]
             / ".gemini_cache"
@@ -68,9 +68,6 @@ class GeminiClient:
             exist_ok=True,
         )
 
-    # ==================================================
-    # CACHE
-    # ==================================================
 
     def _cache_key(
         self,
@@ -262,11 +259,6 @@ class GeminiClient:
 
             return None
 
-    # ==================================================
-    # STRUCTURED GENERATION
-    # ==================================================
-
-
     @staticmethod
     def _flatten_schema(schema: dict) -> dict:
         """
@@ -282,12 +274,10 @@ class GeminiClient:
             if not isinstance(node, dict):
                 return node
 
-            # Remove fields Gemini does not support.
             node.pop("title", None)
             node.pop("$schema", None)
             node.pop("default", None)
 
-            # Resolve Pydantic $ref definitions inline.
             ref = node.pop("$ref", None)
 
             if ref:
@@ -319,10 +309,6 @@ class GeminiClient:
         prompt: str,
         response_schema: type[BaseModel],
     ) -> BaseModel:
-
-        # ==================================================
-        # CACHE LOOKUP
-        # ==================================================
 
         cache_key = self._cache_key(
             prompt,
@@ -377,22 +363,15 @@ class GeminiClient:
 
                 if response.parsed is not None:
 
-                    result = (
+                    result = response_schema.model_validate(
                         response.parsed
                     )
 
                 else:
 
-                    result = (
-                        response_schema
-                        .model_validate_json(
-                            response.text
-                        )
+                    result = response_schema.model_validate_json(
+                        response.text
                     )
-
-                # ==================================================
-                # SAVE SUCCESSFUL RESULT
-                # ==================================================
 
                 self._save_cache(
                     cache_key,
@@ -411,8 +390,6 @@ class GeminiClient:
 
                 # ==================================================
                 # QUOTA EXHAUSTION
-                #
-                # NEVER retry daily/project quota exhaustion.
                 # ==================================================
 
                 if self._is_quota_exhausted(

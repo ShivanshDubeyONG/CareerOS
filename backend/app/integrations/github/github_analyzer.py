@@ -17,10 +17,6 @@ class GitHubAnalyzer:
 
         filename = filename.lower()
 
-        # ==================================================
-        # requirements.txt
-        # ==================================================
-
         if filename.endswith(
             "requirements.txt"
         ):
@@ -46,10 +42,6 @@ class GitHubAnalyzer:
                     dependencies.add(
                         match.group(1)
                     )
-
-        # ==================================================
-        # package.json
-        # ==================================================
 
         elif filename.endswith(
             "package.json"
@@ -83,22 +75,9 @@ class GitHubAnalyzer:
 
                 return []
 
-        # ==================================================
-        # pyproject.toml
-        # ==================================================
-
         elif filename.endswith(
             "pyproject.toml"
         ):
-
-            # Handle common:
-            #
-            # dependencies = [
-            #   "fastapi",
-            #   "pydantic>=2",
-            # ]
-            #
-            # and similar dependency declarations.
 
             matches = re.findall(
                 r"""["']([A-Za-z0-9_.-]+)(?:[<>=!~^].*)?["']""",

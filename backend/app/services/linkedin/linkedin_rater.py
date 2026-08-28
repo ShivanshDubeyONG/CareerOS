@@ -59,10 +59,7 @@ class LinkedInRater:
             prompt,
             LinkedInRating,
         )
-    # ==================================================
-    # EVIDENCE PACKET
-    # ==================================================
-
+    
     @staticmethod
     def _build_evidence_packet(
         profile: LinkedInProfile,
