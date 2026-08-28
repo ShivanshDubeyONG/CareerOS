@@ -270,27 +270,34 @@ class GeminiClient:
     @staticmethod
     def _flatten_schema(schema: dict) -> dict:
         """
-        Convert Pydantic's $defs/$ref JSON Schema into an inline
-        schema compatible with Gemini's structured-output schema.
+        Convert Pydantic's JSON Schema into a Gemini-compatible
+        structured-output schema by resolving $refs/$defs and
+        removing unsupported JSON Schema metadata.
         """
 
+        schema = dict(schema)
         defs = schema.pop("$defs", {})
 
         def resolve(node):
             if not isinstance(node, dict):
                 return node
 
+            # Remove fields Gemini does not support.
+            node.pop("title", None)
+            node.pop("$schema", None)
+            node.pop("default", None)
+
+            # Resolve Pydantic $ref definitions inline.
             ref = node.pop("$ref", None)
 
             if ref:
                 name = ref.split("/")[-1]
 
                 if name in defs:
-                    replacement = resolve(
-                        dict(defs[name])
-                    )
+                    replacement = resolve(dict(defs[name]))
                     node.update(replacement)
 
+            # Recursively process nested dictionaries/lists.
             for key, value in list(node.items()):
                 if isinstance(value, dict):
                     node[key] = resolve(value)
