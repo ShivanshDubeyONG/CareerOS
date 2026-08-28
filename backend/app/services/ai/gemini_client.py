@@ -49,8 +49,6 @@ class GeminiClient:
             api_key=api_key
         )
 
-        # Use the model configured for the current
-        # Gemini API/free-tier environment.
         self.model = "gemini-3.6-flash"
 
         self.max_retries = 2
@@ -152,11 +150,9 @@ class GeminiClient:
             )
 
             try:
-
                 path.unlink(
                     missing_ok=True
                 )
-
             except Exception:
                 pass
 
@@ -208,7 +204,6 @@ class GeminiClient:
             "quota exceeded",
             "quotaexceeded",
             "exceeded your current quota",
-            "resource exhausted",
         )
 
         return any(
@@ -266,17 +261,13 @@ class GeminiClient:
             return None
 
     # ==================================================
-    # SCHEMA
+    # STRUCTURED SCHEMA
     # ==================================================
 
     @staticmethod
     def _flatten_schema(
         schema: dict,
     ) -> dict:
-        """
-        Convert Pydantic JSON Schema into a simpler schema
-        suitable for Gemini structured output.
-        """
 
         schema = dict(schema)
 
@@ -321,11 +312,9 @@ class GeminiClient:
 
                 if name in defs:
 
-                    replacement = (
-                        resolve(
-                            dict(
-                                defs[name]
-                            )
+                    replacement = resolve(
+                        dict(
+                            defs[name]
                         )
                     )
 
@@ -368,7 +357,134 @@ class GeminiClient:
         )
 
     # ==================================================
-    # GENERATE STRUCTURED
+    # PLAIN TEXT GENERATION
+    # ==================================================
+
+    def generate_text(
+        self,
+        prompt: str,
+    ) -> str:
+
+        print(
+            "Gemini text generation START",
+            flush=True,
+        )
+
+        last_exception = None
+
+        for attempt in range(
+            self.max_retries
+        ):
+
+            try:
+
+                print(
+                    f"Gemini text API call START "
+                    f"(attempt {attempt + 1}/"
+                    f"{self.max_retries})",
+                    flush=True,
+                )
+
+                response = (
+                    self.client.models.generate_content(
+                        model=self.model,
+                        contents=prompt,
+                    )
+                )
+
+                print(
+                    "Gemini text API call DONE",
+                    flush=True,
+                )
+
+                text = (
+                    getattr(
+                        response,
+                        "text",
+                        None,
+                    )
+                )
+
+                if not text:
+
+                    raise ValueError(
+                        "Gemini returned an empty text response."
+                    )
+
+                print(
+                    "Gemini text generation DONE",
+                    flush=True,
+                )
+
+                return text
+
+            except Exception as exc:
+
+                last_exception = exc
+
+                error_text = str(
+                    exc
+                )
+
+                normalized_error = (
+                    error_text.lower()
+                )
+
+                print(
+                    "Gemini text request ERROR:",
+                    repr(exc),
+                    flush=True,
+                )
+
+                if self._is_quota_exhausted(
+                    normalized_error
+                ):
+
+                    retry_after = (
+                        self._extract_retry_seconds(
+                            error_text
+                        )
+                    )
+
+                    raise GeminiQuotaError(
+                        (
+                            "Gemini API quota exhausted. "
+                            "Check the Gemini project/model quota "
+                            "associated with GEMINI_API_KEY."
+                        ),
+                        retry_after=retry_after,
+                    ) from exc
+
+                if (
+                    not self._is_retryable(
+                        normalized_error
+                    )
+                    or attempt
+                    >= self.max_retries - 1
+                ):
+
+                    raise
+
+                delay = (
+                    self.retry_delays[
+                        attempt
+                    ]
+                )
+
+                print(
+                    f"Gemini transient error. "
+                    f"Retrying in {delay}s...",
+                    flush=True,
+                )
+
+                time.sleep(
+                    delay
+                )
+
+        raise last_exception
+
+    # ==================================================
+    # STRUCTURED GENERATION
     # ==================================================
 
     def generate_structured(
@@ -454,10 +570,6 @@ class GeminiClient:
                     flush=True,
                 )
 
-                # --------------------------------------------------
-                # Parse structured result
-                # --------------------------------------------------
-
                 if (
                     getattr(
                         response,
@@ -532,10 +644,6 @@ class GeminiClient:
                     flush=True,
                 )
 
-                # ==================================================
-                # QUOTA
-                # ==================================================
-
                 if self._is_quota_exhausted(
                     normalized_error
                 ):
@@ -555,18 +663,10 @@ class GeminiClient:
                         retry_after=retry_after,
                     ) from exc
 
-                # ==================================================
-                # RETRY TRANSIENT ERRORS
-                # ==================================================
-
-                retryable = (
-                    self._is_retryable(
+                if (
+                    not self._is_retryable(
                         normalized_error
                     )
-                )
-
-                if (
-                    not retryable
                     or attempt
                     >= self.max_retries - 1
                 ):
@@ -589,10 +689,4 @@ class GeminiClient:
                     delay
                 )
 
-        if last_exception:
-
-            raise last_exception
-
-        raise RuntimeError(
-            "Gemini generation failed."
-        )
+        raise last_exception

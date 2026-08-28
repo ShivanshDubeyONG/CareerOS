@@ -434,7 +434,57 @@ Never invent:
 - performance metrics
 - contributions
 
-Return the structured response exactly according to the schema.
+Return ONLY valid JSON.
+Do not use markdown.
+Do not wrap the JSON in ```json fences.
+
+The JSON must match this exact structure:
+
+{
+  "projects": [],
+  "technical_strengths": [],
+  "demonstrated_skills": [],
+  "evidence_gaps": [],
+  "overall_assessment": "",
+  "career_relevance": "",
+  "recommendations": []
+}
+
+Each project must contain:
+
+{
+  "repository": "",
+  "meaningful_project": true,
+  "project_score": 0,
+  "project_stage": "",
+  "project_type": "",
+  "technologies": [],
+  "technology_evidence": [],
+  "assessment": ""
+}
+
+Each technology_evidence item must contain:
+
+{
+  "technology": "",
+  "evidence_sources": [],
+  "confidence": ""
+}
+
+Each demonstrated_skills item must contain:
+
+{
+  "skill": "",
+  "confidence": "",
+  "evidence": ""
+}
+
+Each evidence_gaps item must contain:
+
+{
+  "area": "",
+  "reason": ""
+}
 """
 
         # ==================================================
