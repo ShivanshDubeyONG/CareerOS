@@ -30,18 +30,22 @@ class GitHubAIAnalyzer:
 
         repository_evidence = []
 
-        # --------------------------------------------------
-        # Safety limits for LLM payload size.
-        #
-        # The repository itself is still analyzed fully by
-        # the GitHub pipeline. These limits only control how
-        # much raw text/path data gets sent to Gemini.
-        # --------------------------------------------------
+        # ==================================================
+        # LLM PAYLOAD LIMITS
+        # ==================================================
 
-        MAX_FILE_PATHS_FOR_AI = 300
-        MAX_README_CHARS_FOR_AI = 12000
+        MAX_FILE_PATHS_FOR_AI = 100
+        MAX_README_CHARS_FOR_AI = 6000
+        MAX_DEPENDENCIES_FOR_AI = 50
+        MAX_TEST_FILES_FOR_AI = 50
+        MAX_CONFIG_FILES_FOR_AI = 50
+        MAX_SOURCE_DIRECTORIES_FOR_AI = 30
 
         for repository in profile.repositories:
+
+            # --------------------------------------------------
+            # README
+            # --------------------------------------------------
 
             readme = (
                 repository.readme
@@ -54,21 +58,79 @@ class GitHubAIAnalyzer:
                     readme[
                         :MAX_README_CHARS_FOR_AI
                     ]
-                    + "\n\n[README truncated for AI analysis]"
+                    + "\n\n[README truncated]"
                 )
+
+            # --------------------------------------------------
+            # File paths
+            # --------------------------------------------------
 
             file_paths = (
                 repository.file_paths
                 or []
             )
 
-            if len(file_paths) > MAX_FILE_PATHS_FOR_AI:
+            file_paths = file_paths[
+                :MAX_FILE_PATHS_FOR_AI
+            ]
 
-                file_paths = (
-                    file_paths[
-                        :MAX_FILE_PATHS_FOR_AI
-                    ]
-                )
+            # --------------------------------------------------
+            # Dependencies
+            # --------------------------------------------------
+
+            dependencies = (
+                repository.dependencies
+                or []
+            )
+
+            dependencies = dependencies[
+                :MAX_DEPENDENCIES_FOR_AI
+            ]
+
+            # --------------------------------------------------
+            # Tests
+            # --------------------------------------------------
+
+            test_files = (
+                repository.test_files
+                or []
+            )
+
+            test_files = test_files[
+                :MAX_TEST_FILES_FOR_AI
+            ]
+
+            # --------------------------------------------------
+            # Config files
+            # --------------------------------------------------
+
+            config_files = (
+                repository.config_files
+                or []
+            )
+
+            config_files = config_files[
+                :MAX_CONFIG_FILES_FOR_AI
+            ]
+
+            # --------------------------------------------------
+            # Source directories
+            # --------------------------------------------------
+
+            source_directories = (
+                repository.source_directories
+                or []
+            )
+
+            source_directories = (
+                source_directories[
+                    :MAX_SOURCE_DIRECTORIES_FOR_AI
+                ]
+            )
+
+            # --------------------------------------------------
+            # Evidence
+            # --------------------------------------------------
 
             evidence = {
 
@@ -126,27 +188,22 @@ class GitHubAIAnalyzer:
 
                 "readme": readme,
 
-                "dependencies": (
-                    repository.dependencies
-                ),
+                "dependencies": dependencies,
 
                 "dependency_files": (
                     repository.dependency_files
+                    or []
                 ),
 
                 "file_paths": file_paths,
 
                 "source_directories": (
-                    repository.source_directories
+                    source_directories
                 ),
 
-                "test_files": (
-                    repository.test_files
-                ),
+                "test_files": test_files,
 
-                "config_files": (
-                    repository.config_files
-                ),
+                "config_files": config_files,
 
                 "has_docker": (
                     repository.has_docker
@@ -222,54 +279,47 @@ class GitHubAIAnalyzer:
                 evidence
             )
 
-        # --------------------------------------------------
-        # Measure the payload before sending it to Gemini.
-        # --------------------------------------------------
+        # ==================================================
+        # PAYLOAD SIZE DIAGNOSTIC
+        # ==================================================
 
-        try:
-
-            evidence_json = json.dumps(
-                repository_evidence,
-                ensure_ascii=False,
-            )
-
-            evidence_size = len(
-                evidence_json
-            )
-
-        except Exception:
-
-            evidence_size = 0
+        evidence_json = json.dumps(
+            repository_evidence,
+            ensure_ascii=False,
+        )
 
         print(
-            f"GH AI evidence size: "
-            f"{evidence_size:,} chars",
+            "GH AI evidence size:",
+            f"{len(evidence_json):,} chars",
             flush=True,
         )
+
+        # ==================================================
+        # PROMPT
+        # ==================================================
 
         prompt = f"""
 You are the GitHub intelligence engine for CareerOS.
 
-Your job is to evaluate a candidate's GitHub portfolio
-using ONLY the repository evidence provided below.
+Evaluate this candidate's GitHub portfolio using ONLY the
+repository evidence provided below.
 
-Do NOT invent information.
+Do NOT invent technologies, features, metrics, deployments,
+tests, users, or achievements.
 
 Do NOT assume README claims are implemented.
 
-Do NOT reward repository names.
+Judge each repository based on actual evidence.
 
-Do NOT confuse repository size with engineering quality.
+Return the required GitHubAIAnalysis structured object.
 
-The candidate is:
-
-Username:
+Candidate username:
 {profile.username}
 
-Name:
+Candidate name:
 {profile.name}
 
-Bio:
+Candidate bio:
 {profile.bio}
 
 Public repositories:
@@ -281,436 +331,96 @@ Followers:
 Following:
 {profile.following}
 
-
 ==================================================
 REPOSITORY EVIDENCE
 ==================================================
 
-{repository_evidence}
-
+{evidence_json}
 
 ==================================================
-TECHNOLOGY EVIDENCE RULES
+TECHNOLOGY EVIDENCE
 ==================================================
 
-For every meaningful repository, identify technologies
-that are actually supported by the supplied evidence.
-
-Technology evidence has different strengths.
-
-HIGH CONFIDENCE evidence:
+High-confidence evidence includes:
 
 - GitHub language statistics
-- Explicit dependency names
-- dependency files such as requirements.txt,
-  pyproject.toml, package.json
+- dependency names
+- dependency files
 - Docker configuration
 - configuration files
-- clear source-code structure
+- clear source structure
 - clear frontend structure
 
-MEDIUM CONFIDENCE evidence:
+Medium-confidence evidence includes:
 
-- source directory structure
-- file extensions
-- framework-specific project files
-- repository configuration
+- directory structure
+- file paths
+- framework-specific files
 
-LOW CONFIDENCE evidence:
+Low-confidence evidence includes:
 
 - README-only claims
-- repository description-only claims
+- description-only claims
 - topics alone
 
-IMPORTANT:
-
-A README saying:
-
-"Built with React, FastAPI, PostgreSQL and Docker"
-
-does NOT prove all four technologies.
-
-Only mark them as demonstrated when the repository evidence
-supports them.
-
-For every technology returned in technology_evidence:
-
-technology:
-    canonical technology name
-
-evidence_sources:
-    one or more of:
-        "language"
-        "dependency"
-        "dependency_file"
-        "source_structure"
-        "configuration"
-        "docker"
-        "frontend_structure"
-        "file_path"
-        "readme"
-        "topic"
-
-confidence:
-    "high"
-    "medium"
-    "low"
-
-Examples:
-
-Python detected in GitHub language statistics:
-
-technology:
-    Python
-
-evidence_sources:
-    ["language"]
-
-confidence:
-    high
-
-
-FastAPI found in dependency information:
-
-technology:
-    FastAPI
-
-evidence_sources:
-    ["dependency", "dependency_file"]
-
-confidence:
-    high
-
-
-Dockerfile detected:
-
-technology:
-    Docker
-
-evidence_sources:
-    ["docker", "configuration"]
-
-confidence:
-    high
-
-
-React appears ONLY in README:
-
-technology:
-    React
-
-evidence_sources:
-    ["readme"]
-
-confidence:
-    low
-
+Only call a technology demonstrated when repository evidence
+supports it.
 
 ==================================================
-PROJECT EVALUATION RULES
+PROJECT EVALUATION
 ==================================================
 
-For EVERY repository:
+For each repository:
 
-1. Determine whether it is a meaningful portfolio project.
+- determine whether it is a meaningful project
+- determine project stage
+- determine project type
+- score it from 0 to 10
+- list technologies
+- provide technology evidence
+- explain the assessment
 
-Meaningful examples:
+Project score should prioritize:
 
-- End-to-end applications
-- ML/data projects with actual implementation
-- Backend systems
-- Full-stack applications
-- APIs
-- Developer tools
-- AI applications
-- Data engineering systems
-- Infrastructure/DevOps projects
-- Browser/mobile applications
+1. technical challenge
+2. implementation depth
+3. architecture
+4. functional completeness
+5. meaningful integrations
+6. engineering maturity
+7. originality
+8. usefulness
 
-Do NOT automatically mark something meaningful merely
-because it contains many files.
+Do NOT lower a strong project simply because it lacks tests,
+Docker, deployment, or other optional engineering practices.
 
-Do NOT automatically reject small projects if they solve
-a real problem well.
+Do NOT reward polish over substance.
 
-2. Identify project stage:
+Do NOT reward repository size by itself.
 
-Possible values:
+Do NOT reward README claims without implementation evidence.
 
-- learning
-- prototype
-- active_development
-- completed
-- maintained
-- abandoned
+A sophisticated student project can legitimately score 8+.
 
-3. Identify project type.
+==================================================
+TUTORIALS AND FORKS
+==================================================
 
-Examples:
-
-- machine_learning
-- backend_service
-- full_stack
-- web_application
-- ai_application
-- data_engineering
-- browser_extension
-- mobile_application
-- developer_tool
-- cli
-- automation
-- library
-- learning_project
-
-4. SCORE THE PROJECT FROM 0 TO 10
-
-The project_score must represent the QUALITY OF THE ACTUAL PROJECT,
-not merely the presence or absence of engineering extras.
-
-Evaluate the project using this rubric:
-
-A. TECHNICAL CHALLENGE — 20%
-
-How technically difficult is the actual problem being solved?
-
-Consider:
-- algorithmic complexity
-- ML/AI complexity where applicable
-- backend/system complexity
-- data processing complexity
-- architectural challenges
-- external API/service integration
-- state management
-- non-trivial engineering constraints
-
-B. IMPLEMENTATION DEPTH — 20%
-
-How much meaningful implementation exists?
-
-Consider:
-- amount of substantive implementation
-- business/application logic
-- model implementation
-- data pipelines
-- API implementation
-- reusable modules
-- error handling
-- actual functionality
-
-Do NOT equate repository size with implementation depth.
-
-C. ARCHITECTURE & SYSTEM DESIGN — 15%
-
-Evaluate how thoughtfully the system is structured.
-
-Consider:
-- modularity
-- separation of concerns
-- service boundaries
-- reusable components
-- data flow
-- API structure
-- maintainability
-- appropriate technology choices
-
-D. FUNCTIONAL COMPLETENESS — 15%
-
-How complete is the implemented project?
-
-Consider:
-- whether the main stated problem is actually solved
-- whether core workflows work end-to-end
-- whether major implemented components connect correctly
-- whether the repository represents a usable system
-
-A prototype can score highly if the implemented prototype is
-technically substantial and functional.
-
-Do NOT require production deployment for a high score.
-
-E. INTEGRATIONS & TECHNICAL SOPHISTICATION — 10%
-
-Reward meaningful integration of:
-- external APIs
-- LLMs
-- databases
-- authentication
-- ML models
-- third-party services
-- distributed/system components
-- frontend/backend integration
-- data pipelines
-
-Only reward integrations supported by repository evidence.
-
-F. ENGINEERING MATURITY — 10%
-
-Consider:
-- automated testing
-- dependency management
-- configuration
-- logging
-- error handling
-- CI/CD
-- Docker/containerization
-- documentation
-- code organization
-
-IMPORTANT:
-
-Missing engineering practices should reduce THIS dimension,
-not destroy the project's technical quality.
-
-For example:
-
-A technically sophisticated project with no tests may still
-score highly overall.
-
-G. ORIGINALITY & OWNERSHIP — 5%
-
-Consider:
-- original problem selection
-- meaningful personal implementation
-- unique features
-- non-trivial modifications to existing work
-
-Tutorials and nearly untouched forks should score poorly here.
-
-H. REAL-WORLD USEFULNESS — 5%
-
-Consider:
-- practical problem solved
-- usefulness to an actual user
-- applicability outside a tutorial setting
-- meaningful automation or productivity value
-
---------------------------------------------------
-SCORING CALIBRATION
---------------------------------------------------
-
-Use the following anchors:
-
-9.0–10.0:
-Exceptional student/early-career project.
-Substantial technical challenge, deep implementation,
-strong architecture, meaningful functionality and clear
-ownership.
-
-8.0–8.9:
-Very strong project.
-Clearly beyond a basic tutorial and demonstrates several
-strong engineering capabilities.
-
-7.0–7.9:
-Strong project.
-Meaningful implementation with good technical depth,
-but noticeable limitations in maturity, completeness,
-or sophistication.
-
-6.0–6.9:
-Solid project.
-Clearly functional and meaningful, but relatively standard
-or limited in depth.
-
-5.0–5.9:
-Moderate project.
-Works and demonstrates useful skills, but implementation
-or technical depth is limited.
-
-4.0–4.9:
-Weak project.
-Some meaningful implementation exists, but the project is
-mostly basic, incomplete, highly tutorial-like, or shallow.
-
-0.0–3.9:
-Very weak/non-meaningful portfolio project.
-Primarily tutorial material, trivial implementation,
-placeholder work, or extremely incomplete.
-
-IMPORTANT CALIBRATION RULES:
-
-1. A missing test suite does NOT automatically make a project
-   low quality.
-
-2. A missing Dockerfile does NOT automatically make a project
-   low quality.
-
-3. A project does NOT need production deployment to score 8+.
-
-4. A student project can score 8+ if the implementation itself
-   demonstrates substantial technical ability.
-
-5. "Prototype" is a project stage, NOT a quality score.
-   A sophisticated prototype can score 8–9.
-
-6. "Completed" does not automatically mean high quality.
-
-7. Recent commits do not automatically mean high quality.
-
-8. Inactivity does not automatically mean low quality if the
-   project appears complete.
-
-9. Do not penalize the same missing feature multiple times.
-
-10. Missing evidence means "unknown", not "false".
-
-11. Do not assume that the absence of a README claim means the
-    feature does not exist if repository evidence supports it.
-
-12. Do not reward README claims unless implementation evidence
-    supports them.
-
-13. Do not compare a machine-learning project directly against
-    a web application using superficial technology counts.
-
-14. Judge each project according to what it is trying to accomplish.
-
-15. A technically sophisticated project with imperfect engineering
-    maturity should score higher than a polished but trivial project.
-
-16. Do not artificially lower scores to make the portfolio appear
-    more critical or realistic.
-
-The final project_score must reflect the quality of demonstrated
-engineering work, not the number of missing best-practice checkboxes.
-
-Do NOT treat planned features as implemented.
-
-5. Detect tutorial/learning repositories.
-
-Tutorial/course repositories should generally be:
-
-meaningful_project = false
-
-unless strong evidence shows substantial original
-development.
-
-6. Detect forks carefully.
+Tutorial or learning repositories should generally not count
+as meaningful portfolio projects unless there is substantial
+original work.
 
 A fork is not automatically bad.
 
-Use:
-
-- unique commits
-- changed files
-- additions
-- deletions
-
-A fork with essentially no candidate changes should
-generally NOT count as meaningful original portfolio work.
-
-7. Distinguish activity from quality.
-
-Recent commits do not automatically mean high quality.
-
-Frequent commits do not automatically mean strong
-engineering.
+Use fork contribution evidence where available.
 
 ==================================================
 GENERAL RULE
 ==================================================
 
-Base every evaluation ONLY on supplied evidence.
+Base everything ONLY on the supplied evidence.
+
+Missing evidence means unknown.
 
 Never invent:
 
@@ -718,33 +428,42 @@ Never invent:
 - deployments
 - tests
 - databases
-- frontend code
 - features
 - users
 - production usage
+- performance metrics
 - contributions
 
-If evidence is missing, say it is missing.
-
-Return the structured response exactly according
-to the provided schema.
+Return the structured response exactly according to the schema.
 """
 
-        # --------------------------------------------------
-        # Gemini request
-        # --------------------------------------------------
+        # ==================================================
+        # GEMINI REQUEST
+        # ==================================================
 
         print(
             "GH AI Gemini request START",
             flush=True,
         )
 
-        result = (
-            self.gemini.generate_structured(
-                prompt,
-                GitHubAIAnalysis,
+        try:
+
+            result = (
+                self.gemini.generate_structured(
+                    prompt,
+                    GitHubAIAnalysis,
+                )
             )
-        )
+
+        except Exception as exc:
+
+            print(
+                "GH AI Gemini request FAILED:",
+                repr(exc),
+                flush=True,
+            )
+
+            raise
 
         print(
             "GH AI Gemini request DONE",
