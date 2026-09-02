@@ -18,9 +18,6 @@ Instead of evaluating a resume in isolation, CareerOS cross-checks information a
 <img width="1388" height="965" alt="p2gng" src="https://github.com/user-attachments/assets/3b3f2677-e55f-41d7-9632-2cb82352cd86" />
 
 
-<img width="1377" height="970" alt="p3gng" src="https://github.com/user-attachments/assets/c629a447-27f7-47eb-8479-81d4960c3f15" />
-
-
 <img width="1382" height="963" alt="p4gng" src="https://github.com/user-attachments/assets/9203569d-1a1f-4702-9de0-046d1e8c6891" />
 
 
