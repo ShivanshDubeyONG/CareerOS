@@ -1,10 +1,9 @@
 import os
 
 import requests
-from dotenv import load_dotenv
+from app.utils.env_loader import load_project_env
 
-
-load_dotenv()
+load_project_env()
 
 
 class ApifyLinkedInAcquisitionError(Exception):

@@ -1,6 +1,6 @@
-from dotenv import load_dotenv
+from app.utils.env_loader import load_project_env
 
-load_dotenv()
+load_project_env()
 
 import os
 
@@ -41,10 +41,12 @@ allowed_origins = [
     if origin.strip()
 ]
 
+is_wildcard = "*" in allowed_origins
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=True,
+    allow_credentials=not is_wildcard,
     allow_methods=["*"],
     allow_headers=["*"],
 )

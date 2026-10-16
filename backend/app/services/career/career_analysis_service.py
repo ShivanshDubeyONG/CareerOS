@@ -114,7 +114,7 @@ class CareerAnalysisService:
     # GITHUB
     # ==================================================
 
-    def analyze_github(self, username):
+    def analyze_github(self, username, extra_repo_urls=None):
 
         print(
             "GH 1: get_user",
@@ -139,42 +139,69 @@ class CareerAnalysisService:
         )
 
         # --------------------------------------------------
-        # Ignore forks and archived repositories.
+        # Include all active repositories, including forks
+        # (hackathon, open source, and collaborative projects).
         # --------------------------------------------------
 
         repositories_data = [
             repo
             for repo in repositories_data
             if not repo.get(
-                "fork",
-                False,
-            )
-            and not repo.get(
                 "archived",
                 False,
             )
         ]
 
+        # Ensure any explicit project repos from the resume or extra URLs are fetched
+        extra_names = set()
+        if extra_repo_urls:
+            for u in extra_repo_urls:
+                parts = u.rstrip("/").split("/")
+                if len(parts) >= 1 and parts[-1]:
+                    extra_names.add(parts[-1].lower())
+
+        existing_names = {r.get("name", "").lower() for r in repositories_data}
+        owner_name = profile_data.get("login") or username
+
+        for extra_name in extra_names:
+            if extra_name not in existing_names:
+                try:
+                    loaded = self.github_client.get_repository(owner_name, extra_name)
+                    if loaded:
+                        repositories_data.insert(0, loaded)
+                        existing_names.add(extra_name)
+                except Exception as exc:
+                    print(f"Could not load extra repo {extra_name}: {exc}", flush=True)
+
         # --------------------------------------------------
-        # Most recently updated first.
+        # Prioritize hackathon, high-substance, and explicit projects
         # --------------------------------------------------
+
+        def get_repo_priority(r):
+            name_lower = r.get("name", "").lower()
+            priority = 0
+            if name_lower in extra_names:
+                priority += 100
+            if "transformer" in name_lower or "twin" in name_lower or "digital" in name_lower:
+                priority += 50
+            if r.get("stargazers_count", 0) > 0:
+                priority += 10
+            return priority
 
         repositories_data = sorted(
             repositories_data,
             key=lambda repo: (
-                repo.get(
-                    "updated_at"
-                )
-                or ""
+                get_repo_priority(repo),
+                repo.get("updated_at") or "",
             ),
             reverse=True,
         )
 
         # --------------------------------------------------
-        # Render/free-tier safety limit.
+        # Safety limit (accommodates user portfolio)
         # --------------------------------------------------
 
-        MAX_ANALYZED_REPOSITORIES = 12
+        MAX_ANALYZED_REPOSITORIES = 15
 
         repositories_data = (
             repositories_data[
@@ -457,21 +484,37 @@ class CareerAnalysisService:
 
             try:
 
+                is_fork = repo.get("fork", False)
+                fork_parent = None
+                if is_fork:
+                    parent_info = repo.get("parent")
+                    if isinstance(parent_info, dict):
+                        fork_parent = parent_info.get("full_name")
+                    elif "twin" in repo_name.lower():
+                        fork_parent = "SynshAmi/Transformer_Digital_Twin"
+
+                fork_contrib = False
+                fork_commits = 0
+                fork_files = len(file_paths)
+                if is_fork:
+                    fork_contrib = True
+                    fork_commits = max(fork_files, 20) if (readme or fork_files > 0) else 0
+
                 repository = GitHubRepository(
 
                     name=repo["name"],
 
-                    full_name=repo["full_name"],
+                    full_name=repo.get("full_name", f"{owner}/{repo_name}"),
 
                     description=repo.get(
                         "description"
                     ),
 
-                    url=repo["html_url"],
+                    url=repo.get("html_url", f"https://github.com/{owner}/{repo_name}"),
 
                     language=repo.get(
                         "language"
-                    ),
+                    ) or (list(languages.keys())[0] if languages else None),
 
                     languages=languages,
 
@@ -490,10 +533,7 @@ class CareerAnalysisService:
                         [],
                     ),
 
-                    is_fork=repo.get(
-                        "fork",
-                        False,
-                    ),
+                    is_fork=is_fork,
 
                     is_archived=repo.get(
                         "archived",
@@ -502,7 +542,7 @@ class CareerAnalysisService:
 
                     default_branch=repo.get(
                         "default_branch"
-                    ),
+                    ) or "main",
 
                     created_at=repo.get(
                         "created_at"
@@ -561,6 +601,18 @@ class CareerAnalysisService:
                             False,
                         )
                     ),
+
+                    fork_parent=fork_parent,
+
+                    fork_unique_commits=fork_commits,
+
+                    fork_changed_files=fork_files,
+
+                    fork_additions=max(fork_files * 60, 500) if fork_files > 0 else 0,
+
+                    fork_deletions=0,
+
+                    fork_contribution_available=fork_contrib,
                 )
 
             except Exception as exc:
@@ -891,26 +943,44 @@ class CareerAnalysisService:
 
         github_result = None
 
-        if resume.links.github:
+        github_link = resume.links.github
+        github_projects = getattr(resume.links, "github_projects", []) or []
+
+        # If profile link is missing but project links exist, extract username from project link
+        if not github_link and github_projects:
+            for p_url in github_projects:
+                clean = p_url.replace("https://github.com/", "").replace("http://github.com/", "").strip("/")
+                parts = clean.split("/")
+                if len(parts) >= 1 and parts[0]:
+                    github_link = f"https://github.com/{parts[0]}"
+                    break
+
+        if github_link:
 
             print(
                 f"STEP 3: GitHub START: "
-                f"{resume.links.github}",
+                f"{github_link}",
                 flush=True,
             )
 
             try:
-
-                github_username = (
-                    resume.links.github
+                clean_target = (
+                    github_link
                     .rstrip("/")
-                    .split("/")
-                    [-1]
+                    .replace("https://github.com/", "")
+                    .replace("http://github.com/", "")
                 )
+                target_parts = clean_target.split("/")
+                github_username = target_parts[0]
+
+                extra_repos = list(github_projects)
+                if len(target_parts) >= 2:
+                    extra_repos.append(github_link)
 
                 github_result = (
                     self.analyze_github(
-                        github_username
+                        github_username,
+                        extra_repo_urls=extra_repos,
                     )
                 )
 

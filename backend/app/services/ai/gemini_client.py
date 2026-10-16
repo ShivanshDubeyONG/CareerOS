@@ -4,13 +4,13 @@ import os
 import time
 from pathlib import Path
 
-from dotenv import load_dotenv
+from app.utils.env_loader import load_project_env
 from google import genai
 from google.genai import types
 from pydantic import BaseModel
 
 
-load_dotenv()
+load_project_env()
 
 
 class GeminiQuotaError(Exception):
@@ -34,22 +34,37 @@ class GeminiClient:
         )
 
         if not api_key:
-            raise ValueError(
-                "GEMINI_API_KEY environment variable "
-                "is not set."
+            print(
+                "[GeminiClient] WARNING: GEMINI_API_KEY environment variable is not set. "
+                "AI evaluations will use deterministic heuristics.",
+                flush=True,
+            )
+            self.client = None
+        else:
+            print(
+                "Gemini API key configured:",
+                bool(api_key),
+                flush=True,
+            )
+            self.client = genai.Client(
+                api_key=api_key
             )
 
-        print(
-            "Gemini API key configured:",
-            bool(api_key),
-            flush=True,
+        self.model = os.getenv(
+            "GEMINI_MODEL",
+            "gemini-3.6-flash",
         )
 
-        self.client = genai.Client(
-            api_key=api_key
+        self.fallback_models = list(
+            dict.fromkeys(
+                [
+                    self.model,
+                    "gemini-3.8-flash",
+                    "gemini-3.6-flash",
+                    "gemini-2.5-flash",
+                ]
+            )
         )
-
-        self.model = "gemini-3.6-flash"
 
         self.max_retries = 2
 
@@ -186,6 +201,26 @@ class GeminiClient:
                 repr(exc),
                 flush=True,
             )
+
+    def _text_cache_key(self, prompt: str) -> str:
+        cache_input = self.model + "\ntext\n" + prompt
+        return hashlib.sha256(cache_input.encode("utf-8")).hexdigest()
+
+    def _load_text_cache(self, key: str) -> str | None:
+        path = self.cache_dir / f"text_{key}.txt"
+        if not path.exists():
+            return None
+        try:
+            return path.read_text(encoding="utf-8")
+        except Exception:
+            return None
+
+    def _save_text_cache(self, key: str, text: str) -> None:
+        path = self.cache_dir / f"text_{key}.txt"
+        try:
+            path.write_text(text, encoding="utf-8")
+        except Exception:
+            pass
 
     # ==================================================
     # ERROR HELPERS
@@ -370,116 +405,66 @@ class GeminiClient:
             flush=True,
         )
 
+        if not self.client:
+            raise GeminiQuotaError(
+                "GEMINI_API_KEY environment variable is not configured."
+            )
+
+        cache_key = self._text_cache_key(prompt)
+        cached = self._load_text_cache(cache_key)
+        if cached is not None:
+            print("Gemini text cache HIT", flush=True)
+            return cached
+
+        print("Gemini text cache MISS", flush=True)
+
         last_exception = None
 
-        for attempt in range(
-            self.max_retries
-        ):
+        for model_candidate in self.fallback_models:
+            for attempt in range(self.max_retries):
+                try:
+                    print(
+                        f"Gemini text API call START ({model_candidate}, attempt {attempt + 1}/{self.max_retries})",
+                        flush=True,
+                    )
 
-            try:
-
-                print(
-                    f"Gemini text API call START "
-                    f"(attempt {attempt + 1}/"
-                    f"{self.max_retries})",
-                    flush=True,
-                )
-
-                response = (
-                    self.client.models.generate_content(
-                        model=self.model,
+                    response = self.client.models.generate_content(
+                        model=model_candidate,
                         contents=prompt,
                     )
-                )
 
-                print(
-                    "Gemini text API call DONE",
-                    flush=True,
-                )
+                    text = getattr(response, "text", None)
+                    if not text:
+                        raise ValueError("Gemini returned an empty text response.")
 
-                text = (
-                    getattr(
-                        response,
-                        "text",
-                        None,
-                    )
-                )
+                    self.model = model_candidate
+                    self._save_text_cache(cache_key, text)
+                    print(f"Gemini text generation DONE with {model_candidate}", flush=True)
+                    return text
 
-                if not text:
+                except Exception as exc:
+                    last_exception = exc
+                    error_text = str(exc)
+                    normalized_error = error_text.lower()
+                    print(f"Gemini text request ERROR ({model_candidate}): {exc!r}", flush=True)
 
-                    raise ValueError(
-                        "Gemini returned an empty text response."
-                    )
+                    if self._is_quota_exhausted(normalized_error):
+                        retry_after = self._extract_retry_seconds(error_text)
+                        raise GeminiQuotaError(
+                            "Gemini API quota exhausted. Check your Gemini API key and project limits.",
+                            retry_after=retry_after,
+                        ) from exc
 
-                print(
-                    "Gemini text generation DONE",
-                    flush=True,
-                )
+                    if "404" in normalized_error or "not_found" in normalized_error:
+                        print(f"Model {model_candidate} not available, switching to next fallback.", flush=True)
+                        break
 
-                return text
-
-            except Exception as exc:
-
-                last_exception = exc
-
-                error_text = str(
-                    exc
-                )
-
-                normalized_error = (
-                    error_text.lower()
-                )
-
-                print(
-                    "Gemini text request ERROR:",
-                    repr(exc),
-                    flush=True,
-                )
-
-                if self._is_quota_exhausted(
-                    normalized_error
-                ):
-
-                    retry_after = (
-                        self._extract_retry_seconds(
-                            error_text
-                        )
-                    )
-
-                    raise GeminiQuotaError(
-                        (
-                            "Gemini API quota exhausted. "
-                            "Check the Gemini project/model quota "
-                            "associated with GEMINI_API_KEY."
-                        ),
-                        retry_after=retry_after,
-                    ) from exc
-
-                if (
-                    not self._is_retryable(
-                        normalized_error
-                    )
-                    or attempt
-                    >= self.max_retries - 1
-                ):
-
-                    raise
-
-                delay = (
-                    self.retry_delays[
-                        attempt
-                    ]
-                )
-
-                print(
-                    f"Gemini transient error. "
-                    f"Retrying in {delay}s...",
-                    flush=True,
-                )
-
-                time.sleep(
-                    delay
-                )
+                    if self._is_retryable(normalized_error) and attempt < self.max_retries - 1:
+                        delay = self.retry_delays[attempt]
+                        print(f"Gemini transient error. Retrying in {delay}s...", flush=True)
+                        time.sleep(delay)
+                    else:
+                        break
 
         raise last_exception
 
@@ -498,6 +483,11 @@ class GeminiClient:
             flush=True,
         )
 
+        if not self.client:
+            raise GeminiQuotaError(
+                "GEMINI_API_KEY environment variable is not configured."
+            )
+
         cache_key = self._cache_key(
             prompt,
             response_schema,
@@ -509,184 +499,75 @@ class GeminiClient:
         )
 
         if cached is not None:
-
             print(
-                "Gemini cache HIT "
-                f"[{response_schema.__name__}]",
+                f"Gemini cache HIT [{response_schema.__name__}]",
                 flush=True,
             )
-
             return cached
 
         print(
-            "Gemini cache MISS "
-            f"[{response_schema.__name__}]",
+            f"Gemini cache MISS [{response_schema.__name__}]",
             flush=True,
         )
 
-        schema = (
-            self._flatten_schema(
-                response_schema.model_json_schema()
-            )
-        )
-
-        print(
-            "Gemini schema prepared",
-            flush=True,
+        schema = self._flatten_schema(
+            response_schema.model_json_schema()
         )
 
         last_exception = None
 
-        for attempt in range(
-            self.max_retries
-        ):
+        for model_candidate in self.fallback_models:
+            for attempt in range(self.max_retries):
+                try:
+                    print(
+                        f"Gemini API call START ({model_candidate}, attempt {attempt + 1}/{self.max_retries})",
+                        flush=True,
+                    )
 
-            try:
-
-                print(
-                    f"Gemini API call START "
-                    f"(attempt {attempt + 1}/"
-                    f"{self.max_retries})",
-                    flush=True,
-                )
-
-                response = (
-                    self.client.models.generate_content(
-                        model=self.model,
+                    response = self.client.models.generate_content(
+                        model=model_candidate,
                         contents=prompt,
-                        config=(
-                            types.GenerateContentConfig(
-                                response_mime_type=(
-                                    "application/json"
-                                ),
-                                response_schema=schema,
-                            )
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            response_schema=schema,
                         ),
                     )
-                )
 
-                print(
-                    "Gemini API call DONE",
-                    flush=True,
-                )
+                    if getattr(response, "parsed", None) is not None:
+                        result = response_schema.model_validate(response.parsed)
+                    else:
+                        text = getattr(response, "text", None)
+                        if not text:
+                            raise ValueError("Gemini returned an empty response.")
+                        result = response_schema.model_validate_json(text)
 
-                if (
-                    getattr(
-                        response,
-                        "parsed",
-                        None,
-                    )
-                    is not None
-                ):
+                    self.model = model_candidate
+                    self._save_cache(cache_key, result)
+                    print(f"Gemini structured generation DONE with {model_candidate}", flush=True)
+                    return result
 
-                    result = (
-                        response_schema
-                        .model_validate(
-                            response.parsed
-                        )
-                    )
+                except Exception as exc:
+                    last_exception = exc
+                    error_text = str(exc)
+                    normalized_error = error_text.lower()
+                    print(f"Gemini request ERROR ({model_candidate}): {exc!r}", flush=True)
 
-                else:
+                    if self._is_quota_exhausted(normalized_error):
+                        retry_after = self._extract_retry_seconds(error_text)
+                        raise GeminiQuotaError(
+                            "Gemini API quota exhausted. Check your Gemini API key and project limits.",
+                            retry_after=retry_after,
+                        ) from exc
 
-                    text = (
-                        getattr(
-                            response,
-                            "text",
-                            None,
-                        )
-                    )
+                    if "404" in normalized_error or "not_found" in normalized_error:
+                        print(f"Model {model_candidate} not available, switching to next fallback.", flush=True)
+                        break
 
-                    if not text:
-
-                        raise ValueError(
-                            "Gemini returned an empty response."
-                        )
-
-                    result = (
-                        response_schema
-                        .model_validate_json(
-                            text
-                        )
-                    )
-
-                print(
-                    "Gemini response parsed",
-                    flush=True,
-                )
-
-                self._save_cache(
-                    cache_key,
-                    result,
-                )
-
-                print(
-                    "Gemini structured generation DONE",
-                    flush=True,
-                )
-
-                return result
-
-            except Exception as exc:
-
-                last_exception = exc
-
-                error_text = str(
-                    exc
-                )
-
-                normalized_error = (
-                    error_text.lower()
-                )
-
-                print(
-                    "Gemini request ERROR:",
-                    repr(exc),
-                    flush=True,
-                )
-
-                if self._is_quota_exhausted(
-                    normalized_error
-                ):
-
-                    retry_after = (
-                        self._extract_retry_seconds(
-                            error_text
-                        )
-                    )
-
-                    raise GeminiQuotaError(
-                        (
-                            "Gemini API quota exhausted. "
-                            "Check the Gemini project/model quota "
-                            "associated with GEMINI_API_KEY."
-                        ),
-                        retry_after=retry_after,
-                    ) from exc
-
-                if (
-                    not self._is_retryable(
-                        normalized_error
-                    )
-                    or attempt
-                    >= self.max_retries - 1
-                ):
-
-                    raise
-
-                delay = (
-                    self.retry_delays[
-                        attempt
-                    ]
-                )
-
-                print(
-                    f"Gemini transient error. "
-                    f"Retrying in {delay}s...",
-                    flush=True,
-                )
-
-                time.sleep(
-                    delay
-                )
+                    if self._is_retryable(normalized_error) and attempt < self.max_retries - 1:
+                        delay = self.retry_delays[attempt]
+                        print(f"Gemini transient error. Retrying in {delay}s...", flush=True)
+                        time.sleep(delay)
+                    else:
+                        break
 
         raise last_exception

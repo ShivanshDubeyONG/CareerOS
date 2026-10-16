@@ -1,5 +1,6 @@
 import os
 import uuid
+from pathlib import Path
 
 from fastapi import HTTPException, UploadFile
 import pymupdf
@@ -14,7 +15,8 @@ from app.services.resume_extraction_service import resume_extraction_service
 class ResumeService:
 
     def __init__(self):
-        self.upload_dir = "uploads"
+        backend_dir = Path(__file__).resolve().parents[2]
+        self.upload_dir = os.getenv("UPLOAD_DIR", str(backend_dir / "uploads"))
         os.makedirs(self.upload_dir, exist_ok=True)
 
     async def upload_resume(

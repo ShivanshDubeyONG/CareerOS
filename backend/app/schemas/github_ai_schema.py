@@ -1,12 +1,19 @@
-from typing import List
+from typing import List, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class SkillEvidence(BaseModel):
     skill: str
     confidence: str
     evidence: str
+
+    @field_validator("evidence", mode="before")
+    @classmethod
+    def normalize_evidence(cls, v):
+        if isinstance(v, list):
+            return " ".join(str(item) for item in v)
+        return str(v) if v is not None else ""
 
 
 class TechnologyEvidence(BaseModel):
