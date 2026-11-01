@@ -13,6 +13,37 @@ from app.services.ai.gemini_client import GeminiClient
 
 class ResumeRater:
 
+    @staticmethod
+    def compute_deterministic_impact(resume: ResumeData) -> tuple[float, str, list[str]]:
+        import re
+        bullets = []
+        for p in resume.projects or []:
+            desc = getattr(p, "description", "") or ""
+            if desc:
+                bullets.extend([b.strip("-* \t") for b in desc.split("\n") if len(b.strip("-* \t")) > 12])
+        for exp in resume.experience or []:
+            desc = getattr(exp, "description", "") or ""
+            if desc:
+                bullets.extend([b.strip("-* \t") for b in desc.split("\n") if len(b.strip("-* \t")) > 12])
+
+        if not bullets:
+            return 35.0, "No bullet points found with quantifiable engineering metrics.", ["Add quantitative metrics (e.g. latency, users, % improvement)."]
+
+        metric_pattern = re.compile(
+            r"(\d+(?:\.\d+)?%|\b\d+x\b|\b\d+\s*(?:ms|s|sec|queries|users|req/s|qps|kb|mb|gb|stars|prs)\b|\$\d+|\b(?:reduced|improved|increased|accelerated|optimized|scaled)\b[^\n,.]*?\b\d+)",
+            re.IGNORECASE
+        )
+        bullets_with_metrics = [b for b in bullets if metric_pattern.search(b)]
+        ratio = len(bullets_with_metrics) / len(bullets)
+
+        score = round(min(95.0, max(25.0, 35.0 + (ratio * 45.0) + min(15.0, len(bullets_with_metrics) * 5.0))), 1)
+        rationale = f"Deterministic Impact: {len(bullets_with_metrics)} of {len(bullets)} bullets ({round(ratio*100)}%) contain quantifiable engineering metrics."
+        issues = []
+        if ratio < 0.4:
+            issues.append(f"Only {len(bullets_with_metrics)} of {len(bullets)} bullet points contain quantitative results. Target at least 40% with metrics.")
+        return score, rationale, issues
+
+
     def __init__(self):
         self.gemini = GeminiClient()
 
@@ -383,6 +414,13 @@ Return JSON only.
                 )
             )
 
+            # Ground impact deterministically
+            det_score, det_rationale, det_issues = self.compute_deterministic_impact(resume)
+            result.quantified_impact.score = det_score
+            result.quantified_impact.rationale = det_rationale
+            if det_issues:
+                result.quantified_impact.issues = det_issues
+
             print(
                 "ResumeRating: JSON validation DONE",
                 flush=True,
@@ -480,11 +518,12 @@ Return JSON only.
             issues=[],
         )
 
+        det_score, det_rationale, det_issues = self.compute_deterministic_impact(resume)
         quantified_impact_sec = ResumeSectionScore(
-            score=65.0,
-            rationale="Project and work descriptions demonstrate functional outputs.",
-            strengths=["Concrete deliverables outlined in project summaries."],
-            issues=["Incorporate quantitative metrics (e.g. latency reductions, active users, percentage improvements)."],
+            score=det_score,
+            rationale=det_rationale,
+            strengths=["Functional deliverables outlined in project summaries."],
+            issues=det_issues or ["Incorporate quantitative metrics (e.g. latency reductions, active users, percentage improvements)."],
         )
 
         target_role_sec = ResumeSectionScore(

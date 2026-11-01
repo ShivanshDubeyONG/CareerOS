@@ -11,6 +11,7 @@ class EvidenceItem(BaseModel):
 
 class SkillEvidence(BaseModel):
     skill: str
+    display_name: str | None = None
 
     resume_claimed: bool = False
     linkedin_claimed: bool = False
@@ -26,9 +27,16 @@ class SkillEvidence(BaseModel):
         default_factory=list
     )
 
+    applicable_sources: list[str] = Field(
+        default_factory=list
+    )
+
+    not_applicable_sources: list[str] = Field(
+        default_factory=list
+    )
+
     status: str = "unknown"
 
-    # NEW:
     # How relevant this skill is to the candidate's
     # detected career direction.
     relevance: str = "unknown"
@@ -85,6 +93,10 @@ class UnifiedCandidateProfile(BaseModel):
         default_factory=list
     )
 
+    dsa_topics: list[str] = Field(
+        default_factory=list
+    )
+
     career_domains: list[str] = Field(
         default_factory=list
     )
@@ -93,14 +105,16 @@ class UnifiedCandidateProfile(BaseModel):
 
     current_company: str | None = None
 
-    # NEW:
     # Detected primary career direction.
     primary_career_domain: str | None = None
 
-    # NEW:
     # Relevance of each connected source to the
     # candidate's detected career direction.
     source_relevance: dict[str, str] = Field(
+        default_factory=dict
+    )
+
+    profile_confidence: dict[str, str | float] = Field(
         default_factory=dict
     )
 

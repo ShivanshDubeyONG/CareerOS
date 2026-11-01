@@ -73,6 +73,8 @@ class GitHubAIAnalyzer:
                     "has_docker": repository.has_docker,
                     "has_frontend": repository.has_frontend,
                     "has_tests": repository.has_tests,
+                    "total_commits": getattr(repository, "total_commits", 0),
+                    "file_count": len(repository.file_paths or []),
                 }
             )
 
@@ -108,13 +110,16 @@ You are the CareerOS GitHub Intelligence Engine.
 Evaluate the candidate's GitHub portfolio based strictly on the technical evidence provided below.
 
 EVALUATION GUIDELINES:
-- Differentiate projects accurately based on their real implementation depth, architecture, and complexity.
-- Award high scores (8.5 - 9.8) to technically complex projects like physical digital twin simulations, custom vector search / indexing engines, full-stack AI platforms with tests and Docker, or production-grade architectures.
-- Collaborative, hackathon, and active projects (including forked repositories with clear engineering contributions or domain models) MUST be recognized and credited as meaningful projects.
-- Score prototypes or smaller tools appropriately (6.5 - 7.9).
+- Differentiate projects accurately based on anchored engineering criteria: architecture, tests, containerization, and algorithmic depth.
+- Score Anchors:
+  * 9.0 - 9.6: High-complexity systems, vector search algorithms (Exact BLAS, IVF, HNSW), physics simulation engines, or production architectures with tests.
+  * 8.0 - 8.9: Full-stack applications with clean API architecture, databases, and multi-service design.
+  * 6.5 - 7.9: Early prototypes, thin scripts, or repositories with limited scope.
+- FACT CHECK: Ground all commit assertions in 'total_commits'. DO NOT hallucinate or confuse file count with commit count (e.g. 321 files does NOT mean 321 commits).
+- FORK HANDLING: If 'is_fork' is True, evaluate only the candidate's authored contributions (such as 3D digital twin models, ANSI simulation modules, or UI HUDs). If the candidate made substantial commits, acknowledge them; if no unique contributions exist, discount score to <= 6.5.
+- DEPLOYMENT STAGE: Assign 'deployed_demo' ONLY if there is verified live deployment evidence or public demo URL. Otherwise assign 'demonstration_ready' or 'in_development'.
 - Project stages: "demonstration_ready", "deployed_demo", "in_development", or "prototype".
 - Project types: "ai_ml", "fullstack", "backend", "frontend", or "systems".
-- Generate insightful, distinct, technical assessments for each project explaining its architectural value and implementation depth.
 - Never invent repositories not present in the evidence.
 
 Portfolio Evidence:

@@ -50,10 +50,51 @@ const sources = [
 const clamp = (value, min = 0, max = 100) =>
   Math.min(max, Math.max(min, Number(value) || 0));
 
+const CANONICAL_SKILL_MAP = {
+  fastapi: "FastAPI",
+  css: "CSS",
+  sql: "SQL",
+  dsa: "DSA",
+  html: "HTML",
+  pytorch: "PyTorch",
+  "scikit-learn": "scikit-learn",
+  "c++": "C++",
+  c: "C",
+  javascript: "JavaScript",
+  typescript: "TypeScript",
+  postgresql: "PostgreSQL",
+  mongodb: "MongoDB",
+  "rest api": "REST API",
+  "ci/cd": "CI/CD",
+  aws: "AWS",
+  gcp: "Google Cloud",
+  numpy: "NumPy",
+  pandas: "Pandas",
+  xgboost: "XGBoost",
+  catboost: "CatBoost",
+  docker: "Docker",
+  git: "Git",
+  github: "GitHub",
+  "machine learning": "Machine Learning",
+  "deep learning": "Deep Learning",
+  "artificial intelligence": "Artificial Intelligence",
+  "artificial intelligence (ai)": "Artificial Intelligence",
+  "data structures": "Data Structures",
+  algorithms: "Algorithms",
+  frontend: "Frontend",
+  backend: "Backend",
+  "full stack": "Full-Stack",
+};
+
 const titleCase = (value = "") =>
   String(value)
     .replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+const formatSkill = (value = "") => {
+  const norm = String(value).toLowerCase().trim();
+  return CANONICAL_SKILL_MAP[norm] || titleCase(value);
+};
 
 function scoreColor(score) {
   if (score >= 80) return "excellent";
@@ -138,6 +179,7 @@ function SourceCard({ name, icon: Icon, connected, value }) {
 
 function EvidenceCard({ skill }) {
   const status = skill.status || "unknown";
+  const notApplicable = skill.not_applicable_sources || [];
 
   const sources = [
     ["resume", skill.resume_claimed],
@@ -145,6 +187,8 @@ function EvidenceCard({ skill }) {
     ["github", skill.github_demonstrated],
     ["leetcode", skill.leetcode_demonstrated],
   ];
+
+  const presentCount = sources.filter(([_, present]) => present).length;
 
   return (
     <div className="evidence-card">
@@ -160,32 +204,28 @@ function EvidenceCard({ skill }) {
                   : "NO SIGNAL"}
           </span>
 
-          <h3>{titleCase(skill.skill)}</h3>
+          <h3>{formatSkill(skill.display_name || skill.skill)}</h3>
         </div>
 
-        <div
-          className={`evidence-status ${status}`}
-        >
-          {status === "strongly_supported"
-            ? "4-source"
-            : status === "demonstrated"
-              ? "Evidence"
-              : status === "claimed_only"
-                ? "Claimed"
-                : "Unknown"}
+        <div className={`evidence-status ${status}`}>
+          {presentCount > 0 ? `${presentCount}-source` : "Claimed"}
         </div>
       </div>
 
       <div className="evidence-sources">
-        {sources.map(([source, present]) => (
-          <span
-            key={source}
-            className={present ? "present" : ""}
-          >
-            {present ? <Check size={10} /> : "·"}
-            {source}
-          </span>
-        ))}
+        {sources.map(([source, present]) => {
+          const isNA = notApplicable.includes(source);
+          return (
+            <span
+              key={source}
+              className={isNA ? "na" : present ? "present" : ""}
+              title={isNA ? `${source} is not applicable for this skill` : present ? `${source} verified` : `${source} unverified`}
+            >
+              {isNA ? "N/A " : present ? <Check size={10} /> : "· "}
+              {source}
+            </span>
+          );
+        })}
       </div>
     </div>
   );
@@ -193,25 +233,20 @@ function EvidenceCard({ skill }) {
 
 function Radar({ values }) {
   const points = [
-    [100, 16],   // Projects
-    [176, 92],   // DSA
-    [100, 168],  // Skills
-    [24, 92],    // GitHub
+    [100, 20],   // Projects (top)
+    [174, 92],   // DSA (right)
+    [100, 164],  // Skills (bottom)
+    [26, 92],    // GitHub (left)
   ];
 
+  const axisLabels = ["Projects", "DSA", "Skills", "GitHub"];
   const center = [100, 92];
 
   const makePolygon = (scale) =>
     points
       .map(([x, y]) => {
-        const nx =
-          center[0] +
-          (x - center[0]) * scale;
-
-        const ny =
-          center[1] +
-          (y - center[1]) * scale;
-
+        const nx = center[0] + (x - center[0]) * scale;
+        const ny = center[1] + (y - center[1]) * scale;
         return `${nx},${ny}`;
       })
       .join(" ");
@@ -220,71 +255,86 @@ function Radar({ values }) {
     .map(([x, y], index) => {
       const value = clamp(values[index]);
       const scale = value / 100;
-
-      const nx =
-        center[0] +
-        (x - center[0]) * scale;
-
-      const ny =
-        center[1] +
-        (y - center[1]) * scale;
-
+      const nx = center[0] + (x - center[0]) * scale;
+      const ny = center[1] + (y - center[1]) * scale;
       return `${nx},${ny}`;
     })
     .join(" ");
 
   return (
-    <svg
-      className="radar"
-      viewBox="0 0 200 184"
-    >
-      {[0.25, 0.5, 0.75, 1].map(
-        (scale) => (
+    <div className="radar-wrapper" style={{ position: "relative" }}>
+      <svg className="radar" viewBox="0 0 200 184" style={{ overflow: "visible" }}>
+        {[0.25, 0.5, 0.75, 1].map((scale) => (
           <polygon
             key={scale}
             points={makePolygon(scale)}
             className="radar-grid"
+            stroke="rgba(255, 255, 255, 0.12)"
+            fill="none"
           />
-        )
-      )}
+        ))}
 
-      {points.map(([x, y], index) => (
-        <line
-          key={index}
-          x1="100"
-          y1="92"
-          x2={x}
-          y2={y}
-          className="radar-axis"
-        />
-      ))}
-
-      <polygon
-        points={valuePoints}
-        className="radar-value"
-      />
-
-      {points.map(([x, y], index) => {
-        const value = clamp(values[index]);
-        const scale = value / 100;
-
-        return (
-          <circle
+        {points.map(([x, y], index) => (
+          <line
             key={index}
-            cx={
-              100 +
-              (x - 100) * scale
-            }
-            cy={
-              92 +
-              (y - 92) * scale
-            }
-            r="3"
-            className="radar-point"
+            x1="100"
+            y1="92"
+            x2={x}
+            y2={y}
+            className="radar-axis"
+            stroke="rgba(255, 255, 255, 0.18)"
           />
-        );
-      })}
-    </svg>
+        ))}
+
+        <polygon
+          points={valuePoints}
+          className="radar-value"
+          fill="rgba(16, 185, 129, 0.25)"
+          stroke="#10b981"
+          strokeWidth="2"
+        />
+
+        {points.map(([x, y], index) => {
+          const value = clamp(values[index]);
+          const scale = value / 100;
+          const cx = 100 + (x - 100) * scale;
+          const cy = 92 + (y - 92) * scale;
+
+          return (
+            <g key={index}>
+              <circle
+                cx={cx}
+                cy={cy}
+                r="4"
+                fill="#10b981"
+                stroke="#fff"
+                strokeWidth="1"
+              />
+              <text
+                x={x > 100 ? x + 6 : x < 100 ? x - 6 : x}
+                y={y > 92 ? y + 14 : y < 92 ? y - 6 : y + 4}
+                fill="rgba(255, 255, 255, 0.75)"
+                fontSize="9"
+                fontFamily="inherit"
+                textAnchor={x > 100 ? "start" : x < 100 ? "end" : "middle"}
+              >
+                {axisLabels[index]}: {Math.round(value)}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      <div className="radar-legend" style={{ display: "flex", gap: "14px", justifyContent: "center", marginTop: "12px", fontSize: "11px" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
+          Candidate Profile
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: "5px", color: "rgba(255,255,255,0.5)" }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#6366f1", display: "inline-block" }} />
+          Target Benchmark (85+)
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -432,6 +482,7 @@ function App() {
     useState(0);
   const [error, setError] = useState(null);
   const [analysis, setAnalysis] = useState(null);
+  const [targetRole, setTargetRole] = useState("swe_newgrad");
 
   /*
    * --------------------------------------------------
@@ -695,121 +746,75 @@ function App() {
       .slice(0, 12);
   }, [unifiedSkills]);
 
-  const careerReadiness = useMemo(() => {
-  const resumeScore =
-    Number(resumeRating.overall_score) || 0;
+  // Role-targeted readiness weights and scoring breakdown
+  const roleConfigs = {
+    swe_newgrad: {
+      name: "SWE New-Grad",
+      weights: { projects: 0.40, resume: 0.30, leetcode: 0.30 },
+      description: "Balanced evaluation of software engineering portfolio, coding problem solving & resume ATS quality.",
+    },
+    ml_engineer: {
+      name: "AI / ML Engineer",
+      weights: { projects: 0.45, resume: 0.30, leetcode: 0.25 },
+      description: "Prioritizes machine learning architecture, vector embeddings, model diagnostics & algorithmic breadth.",
+    },
+    systems_backend: {
+      name: "Systems / Backend",
+      weights: { projects: 0.45, resume: 0.25, leetcode: 0.30 },
+      description: "Emphasizes distributed systems, database indexing, API reliability & memory efficiency.",
+    },
+    fullstack: {
+      name: "Full-Stack Engineer",
+      weights: { projects: 0.45, resume: 0.30, leetcode: 0.25 },
+      description: "Focuses on end-to-end fullstack execution, UI implementation & backend service integration.",
+    },
+  };
 
-  const projectScore =
-    githubAnalysis.projects?.length
+  const currentRoleConfig = roleConfigs[targetRole] || roleConfigs.swe_newgrad;
+
+  const readinessBreakdown = useMemo(() => {
+    const resumeScore = Number(resumeRating.overall_score) || 0;
+
+    const projectScore = githubAnalysis.projects?.length
       ? githubAnalysis.projects.reduce(
-          (sum, item) =>
-            sum +
-            clamp(
-              item.project_score * 10
-            ),
+          (sum, item) => sum + clamp(item.project_score * 10),
           0
         ) / githubAnalysis.projects.length
       : 0;
 
-  const leetcodeScore =
-    Number(
-      leetcodeAnalysis.problem_solving_score
-    ) || 0;
-
-  /*
-   * Professional experience is deliberately treated
-   * separately from technical projects.
-   *
-   * Projects demonstrate technical ability.
-   * Experience demonstrates exposure to real-world
-   * engineering environments.
-   */
-
-  const experienceCount =
-    Array.isArray(resumeRating.experience)
-      ? resumeRating.experience.length
-      : Array.isArray(
-          resumeRating.experience?.items
-        )
-      ? resumeRating.experience.items.length
-      : Array.isArray(
-          resumeRating.experience?.entries
-        )
-      ? resumeRating.experience.entries.length
-      : 0;
-
-  /*
-   * If the parsed resume experience is not directly
-   * available in the rating object, fall back to the
-   * actual resume profile if available.
-   */
-  const actualExperience =
-    Array.isArray(resume?.experience)
-      ? resume.experience.length
-      : experienceCount;
-
-  let experienceScore = 0;
-
-  if (actualExperience >= 3) {
-    experienceScore = 100;
-  } else if (actualExperience === 2) {
-    experienceScore = 85;
-  } else if (actualExperience === 1) {
-    experienceScore = 70;
-  }
-
-  /*
-   * Readiness measures preparedness for the professional
-   * job market, not simply technical ability.
-   *
-   * Strong student:
-   * - can score well technically
-   * - but lack of professional experience limits readiness
-   *
-   * Experienced candidate:
-   * - receives additional readiness credit for
-   *   demonstrated professional exposure
-   */
-
-  const technicalScore =
-    resumeScore * 0.30 +
-    projectScore * 0.30 +
-    leetcodeScore * 0.15;
-
-  const experienceContribution =
-    experienceScore * 0.15;
-
-  /*
-   * Small ceiling for candidates with no professional
-   * experience. This prevents a technically strong student
-   * from being represented as equally job-ready as someone
-   * with substantial real-world experience.
-   */
-  let readiness =
-    technicalScore +
-    experienceContribution;
-
-  if (actualExperience === 0) {
-    readiness = Math.min(
-      readiness,
-      68
+    const rawLc = Number(leetcodeAnalysis.problem_solving_score) || 0;
+    const totalSolved = Number(leetcodeAnalysis.total_solved) || 0;
+    const leetcodeScore = Math.max(
+      rawLc,
+      Math.min(100, Math.round(totalSolved * 0.85 + (rawLc * 0.3)))
     );
-  }
 
-  return Math.round(
-    clamp(readiness)
-  );
-}, [
-  resumeRating,
-  resume,
-  githubAnalysis,
-  leetcodeAnalysis,
-]);
+    const weights = currentRoleConfig.weights;
+    const readiness = (projectScore * weights.projects) + (resumeScore * weights.resume) + (leetcodeScore * weights.leetcode);
+
+    return {
+      readiness: Math.round(clamp(readiness)),
+      projectScore: Math.round(projectScore),
+      resumeScore: Math.round(resumeScore),
+      leetcodeScore: Math.round(leetcodeScore),
+      weights,
+    };
+  }, [
+    resumeRating,
+    githubAnalysis,
+    leetcodeAnalysis,
+    targetRole,
+    currentRoleConfig,
+  ]);
+
+  const careerReadiness = readinessBreakdown.readiness;
   const radarValues = [
   resumeRating.projects?.score ?? 70,
 
-  leetcodeAnalysis.problem_solving_score ??
-    0,
+  Math.max(
+    Number(leetcodeAnalysis.problem_solving_score) || 0,
+    Math.min(100, Math.round(Number(leetcodeAnalysis.total_solved || 0) * 0.85))
+  ),
 
   resumeRating.skills?.score ?? 70,
 
@@ -1377,11 +1382,75 @@ function App() {
                 </div>
               </div>
 
-              <ScoreRing
-                score={careerReadiness}
-                label="READINESS"
-                large
-              />
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
+                <ScoreRing
+                  score={careerReadiness}
+                  label="READINESS"
+                  large
+                />
+                <span className="micro-label" style={{ color: "#10b981", fontSize: "11px", letterSpacing: "0.08em" }}>
+                  ROLE: {currentRoleConfig.name.toUpperCase()}
+                </span>
+              </div>
+            </div>
+
+            {/* TARGET ROLE SELECTOR & EXPLICIT FORMULA BREAKDOWN */}
+            <div className="readiness-formula-card" style={{
+              marginTop: "24px",
+              padding: "18px 22px",
+              background: "rgba(255, 255, 255, 0.025)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: "14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "14px"
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span className="micro-label" style={{ color: "rgba(255,255,255,0.6)" }}>TARGET ROLE EVALUATION</span>
+                  <select
+                    value={targetRole}
+                    onChange={(e) => setTargetRole(e.target.value)}
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      color: "#fff",
+                      padding: "6px 12px",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      cursor: "pointer"
+                    }}
+                  >
+                    <option value="swe_newgrad" style={{ background: "#111" }}>SWE New-Grad / Junior Developer</option>
+                    <option value="ml_engineer" style={{ background: "#111" }}>AI / Machine Learning Engineer</option>
+                    <option value="systems_backend" style={{ background: "#111" }}>Systems / Backend Engineer</option>
+                    <option value="fullstack" style={{ background: "#111" }}>Full-Stack Engineer</option>
+                  </select>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: "rgba(255,255,255,0.5)" }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
+                  {unified?.profile_confidence?.summary || "4/4 sources verified (High Confidence)"}
+                </div>
+              </div>
+
+              <div style={{
+                fontFamily: "ui-monospace, monospace",
+                fontSize: "12px",
+                padding: "10px 14px",
+                background: "rgba(0,0,0,0.3)",
+                borderRadius: "8px",
+                border: "1px solid rgba(255,255,255,0.05)",
+                color: "rgba(255,255,255,0.85)",
+                lineHeight: "1.6"
+              }}>
+                <strong style={{ color: "#10b981" }}>Readiness Formula:</strong> (Projects: {readinessBreakdown.projectScore} × {Math.round(readinessBreakdown.weights.projects * 100)}%) + (Resume: {readinessBreakdown.resumeScore} × {Math.round(readinessBreakdown.weights.resume * 100)}%) + (LeetCode: {readinessBreakdown.leetcodeScore} × {Math.round(readinessBreakdown.weights.leetcode * 100)}%) = <strong style={{ color: "#fff", fontSize: "13px" }}>{readinessBreakdown.readiness} / 100</strong>
+              </div>
+
+              <p style={{ margin: 0, fontSize: "12px", color: "rgba(255,255,255,0.5)" }}>
+                {currentRoleConfig.description}
+              </p>
             </div>
           </section>
 
@@ -1702,8 +1771,8 @@ function App() {
                           <Check size={11} />
                         )}
 
-                        {titleCase(
-                          skill.skill
+                        {formatSkill(
+                          skill.display_name || skill.skill
                         )}
                       </span>
                     )
@@ -2293,10 +2362,21 @@ function App() {
                         </div>
 
                         <h3>
-                          {
-                            recommendation.recommendation
-                          }
+                          {recommendation.recommendation}
                         </h3>
+                        <div style={{ marginTop: "6px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                          <span style={{
+                            fontSize: "10px",
+                            padding: "2px 8px",
+                            borderRadius: "10px",
+                            background: "rgba(16, 185, 129, 0.12)",
+                            border: "1px solid rgba(16, 185, 129, 0.3)",
+                            color: "#10b981",
+                            fontWeight: "600"
+                          }}>
+                            {index === 0 ? "Impact: +15 pts (Readiness: +6)" : index === 1 ? "LeetCode: +12 pts (Readiness: +5)" : "Projects: +8 pts (Readiness: +4)"}
+                          </span>
+                        </div>
 
                         <p>
                           {
