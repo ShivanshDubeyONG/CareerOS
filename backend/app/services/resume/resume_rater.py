@@ -421,6 +421,17 @@ Return JSON only.
             if det_issues:
                 result.quantified_impact.issues = det_issues
 
+            # Strictly anchor overall score to reflect deterministic impact
+            result.overall_score = round(
+                (result.skills.score * 0.20) +
+                (result.projects.score * 0.25) +
+                (det_score * 0.20) +
+                (result.ats.score * 0.15) +
+                (result.structure.score * 0.10) +
+                (result.education.score * 0.10),
+                1
+            )
+
             print(
                 "ResumeRating: JSON validation DONE",
                 flush=True,

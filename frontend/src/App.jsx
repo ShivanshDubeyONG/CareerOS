@@ -1406,27 +1406,32 @@ function App() {
               gap: "14px"
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <span className="micro-label" style={{ color: "rgba(255,255,255,0.6)" }}>TARGET ROLE EVALUATION</span>
-                  <select
-                    value={targetRole}
-                    onChange={(e) => setTargetRole(e.target.value)}
-                    style={{
-                      background: "rgba(255,255,255,0.06)",
-                      border: "1px solid rgba(255,255,255,0.15)",
-                      color: "#fff",
-                      padding: "6px 12px",
-                      borderRadius: "8px",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      cursor: "pointer"
-                    }}
-                  >
-                    <option value="swe_newgrad" style={{ background: "#111" }}>SWE New-Grad / Junior Developer</option>
-                    <option value="ml_engineer" style={{ background: "#111" }}>AI / Machine Learning Engineer</option>
-                    <option value="systems_backend" style={{ background: "#111" }}>Systems / Backend Engineer</option>
-                    <option value="fullstack" style={{ background: "#111" }}>Full-Stack Engineer</option>
-                  </select>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  <span className="micro-label" style={{ color: "rgba(255,255,255,0.6)", marginRight: "4px" }}>TARGET ROLE:</span>
+                  {[
+                    ["swe_newgrad", "SWE New-Grad"],
+                    ["ml_engineer", "AI / ML"],
+                    ["systems_backend", "Systems / Backend"],
+                    ["fullstack", "Full-Stack"],
+                  ].map(([roleKey, roleLabel]) => (
+                    <button
+                      key={roleKey}
+                      onClick={() => setTargetRole(roleKey)}
+                      style={{
+                        background: targetRole === roleKey ? "rgba(16, 185, 129, 0.18)" : "rgba(255, 255, 255, 0.04)",
+                        border: targetRole === roleKey ? "1px solid #10b981" : "1px solid rgba(255, 255, 255, 0.1)",
+                        color: targetRole === roleKey ? "#10b981" : "rgba(255, 255, 255, 0.7)",
+                        padding: "4px 12px",
+                        borderRadius: "20px",
+                        fontSize: "11px",
+                        fontWeight: targetRole === roleKey ? "600" : "400",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease"
+                      }}
+                    >
+                      {roleLabel}
+                    </button>
+                  ))}
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: "rgba(255,255,255,0.5)" }}>
@@ -1641,9 +1646,10 @@ function App() {
               </div>
 
               <div className="health-card">
-                <span className="micro-label">
-                  IMPACT
-                </span>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <span className="micro-label">IMPACT</span>
+                  <span style={{ fontSize: "9px", letterSpacing: "0.06em", color: "rgba(255,255,255,0.45)", fontFamily: "monospace" }}>FACTUAL</span>
+                </div>
 
                 <strong>
                   {Math.round(
@@ -1654,13 +1660,16 @@ function App() {
                 </strong>
 
                 <MetricBar
-                  label="Quantified impact"
+                  label="Quantified metrics"
                   value={
                     resumeRating
                       .quantified_impact
                       ?.score
                   }
                 />
+                <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)", marginTop: "4px", display: "block", lineHeight: "1.3" }}>
+                  {resumeRating.quantified_impact?.rationale ? resumeRating.quantified_impact.rationale.replace("Deterministic Impact: ", "") : "Metrics in 1 of 8 bullets (Target: 40%+)"}
+                </span>
               </div>
             </div>
           </section>
@@ -1778,6 +1787,31 @@ function App() {
                     )
                   )}
                 </div>
+
+                {unified?.dsa_topics?.length > 0 && (
+                  <div style={{ marginTop: "18px", paddingTop: "14px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                    <span className="micro-label" style={{ fontSize: "10px", color: "rgba(255,255,255,0.45)", marginBottom: "8px", display: "block" }}>
+                      DSA TOPIC COVERAGE ({unified.dsa_topics.length} PATTERNS)
+                    </span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                      {unified.dsa_topics.map((topic) => (
+                        <span
+                          key={topic}
+                          style={{
+                            fontSize: "11px",
+                            padding: "3px 9px",
+                            borderRadius: "12px",
+                            background: "rgba(99, 102, 241, 0.08)",
+                            border: "1px solid rgba(99, 102, 241, 0.2)",
+                            color: "rgba(255, 255, 255, 0.8)",
+                          }}
+                        >
+                          {topic}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="evidence-list">

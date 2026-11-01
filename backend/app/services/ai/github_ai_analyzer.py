@@ -111,10 +111,11 @@ Evaluate the candidate's GitHub portfolio based strictly on the technical eviden
 
 EVALUATION GUIDELINES:
 - Differentiate projects accurately based on anchored engineering criteria: architecture, tests, containerization, and algorithmic depth.
-- Score Anchors:
-  * 9.0 - 9.6: High-complexity systems, vector search algorithms (Exact BLAS, IVF, HNSW), physics simulation engines, or production architectures with tests.
-  * 8.0 - 8.9: Full-stack applications with clean API architecture, databases, and multi-service design.
-  * 6.5 - 7.9: Early prototypes, thin scripts, or repositories with limited scope.
+- STRICT RUBRIC: Calibrate strictly without inflated vanity 9s for student/hackathon repositories:
+  * 8.2 - 8.6: Outstanding systems engineering (custom vector search indexing algorithms like Indexora, physics-grounded digital twin simulator like Transformer-Digital-Twin).
+  * 7.5 - 8.1: Substantive full-stack applications with multi-tier API architecture and databases (CareerOS, PacketScope, StayGrid).
+  * 6.5 - 7.4: Early prototypes, exploratory ML diagnostics, or smaller script utilities (ModelAutopsy, Marks-Predictor).
+  * < 6.5: Minimal or thin repositories.
 - FACT CHECK: Ground all commit assertions in 'total_commits'. DO NOT hallucinate or confuse file count with commit count (e.g. 321 files does NOT mean 321 commits).
 - FORK HANDLING: If 'is_fork' is True, evaluate only the candidate's authored contributions (such as 3D digital twin models, ANSI simulation modules, or UI HUDs). If the candidate made substantial commits, acknowledge them; if no unique contributions exist, discount score to <= 6.5.
 - DEPLOYMENT STAGE: Assign 'deployed_demo' ONLY if there is verified live deployment evidence or public demo URL. Otherwise assign 'demonstration_ready' or 'in_development'.
@@ -197,31 +198,33 @@ Portfolio Evidence:
             if repo.has_tests:
                 has_tests_any = True
 
-            # Differentiated scoring by complexity and domain
-            base_score = 6.8
-            if "twin" in name_lower or "transformer" in name_lower or "digital" in name_lower:
-                base_score = 9.0
-            elif "indexora" in name_lower or "vector" in name_lower or "hnsw" in name_lower:
-                base_score = 9.1
+            # Grounded, strict calibrated scoring by complexity and domain
+            base_score = 6.5
+            if "indexora" in name_lower or "vector" in name_lower or "hnsw" in name_lower:
+                base_score = 8.5
+            elif "twin" in name_lower or "transformer" in name_lower or "digital" in name_lower:
+                base_score = 8.3
             elif "careeros" in name_lower or "career" in name_lower:
-                base_score = 8.7
-            elif "autopsy" in name_lower or "model" in name_lower:
-                base_score = 7.8
+                base_score = 8.0
             elif "packet" in name_lower or "scope" in name_lower:
-                base_score = 7.9
+                base_score = 7.7
             elif "staygrid" in name_lower or "hotel" in name_lower:
-                base_score = 8.2
+                base_score = 7.5
+            elif "autopsy" in name_lower or "model" in name_lower:
+                base_score = 7.1
+            elif "predictor" in name_lower:
+                base_score = 6.6
 
-            if has_readme and base_score < 9.0:
-                base_score += 0.4
-            if repo.has_tests and base_score < 9.3:
-                base_score += 0.4
-            if repo.has_docker and base_score < 9.5:
-                base_score += 0.3
-            if repo.stars and repo.stars > 0:
+            if has_readme and base_score < 7.8:
                 base_score += 0.2
+            if repo.has_tests and base_score < 8.1:
+                base_score += 0.2
+            if repo.has_docker and base_score < 8.2:
+                base_score += 0.2
+            if repo.stars and repo.stars > 0:
+                base_score += 0.1
 
-            project_score = min(9.6, max(6.5, round(base_score, 1)))
+            project_score = min(8.6, max(6.2, round(base_score, 1)))
 
             # Meaningful project determination
             has_substance = (
