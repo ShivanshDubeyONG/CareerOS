@@ -66,7 +66,8 @@ def test_github_ai_analyzer_heuristic_fallback():
     )
 
     analyzer = GitHubAIAnalyzer()
-    with mock.patch.object(analyzer.gemini, "generate_text", side_effect=Exception("ResourceExhausted 429")):
+    with mock.patch.object(analyzer.gemini, "generate_text", side_effect=Exception("ResourceExhausted 429")), \
+         mock.patch.object(analyzer.gemini, "generate_structured", side_effect=Exception("ResourceExhausted 429")):
         analysis = analyzer.analyze(profile)
         assert analysis is not None
         assert len(analysis.projects) == 1

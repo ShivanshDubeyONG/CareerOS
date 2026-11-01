@@ -36,11 +36,28 @@ class ResumeRater:
         bullets_with_metrics = [b for b in bullets if metric_pattern.search(b)]
         ratio = len(bullets_with_metrics) / len(bullets)
 
-        score = round(min(95.0, max(25.0, 35.0 + (ratio * 45.0) + min(15.0, len(bullets_with_metrics) * 5.0))), 1)
-        rationale = f"Deterministic Impact: {len(bullets_with_metrics)} of {len(bullets)} bullets ({round(ratio*100)}%) contain quantifiable engineering metrics."
-        issues = []
-        if ratio < 0.4:
-            issues.append(f"Only {len(bullets_with_metrics)} of {len(bullets)} bullet points contain quantitative results. Target at least 40% with metrics.")
+        # Functional & architectural deliverable indicators
+        arch_pattern = re.compile(
+            r"\b(api|rest|fastapi|django|model|simulation|physics|database|indexing|vector|dissection|pcap|websocket|frontend|backend|architecture|cad|twin|pipeline)\b",
+            re.IGNORECASE
+        )
+        bullets_with_arch = [b for b in bullets if arch_pattern.search(b)]
+        arch_ratio = len(bullets_with_arch) / len(bullets)
+
+        # Balanced calibrated score:
+        # Base: 48.0 | Architecture scope: up to +14.0 | Explicit metrics: up to +20.0
+        score = round(min(88.0, max(45.0, 48.0 + (arch_ratio * 14.0) + (ratio * 20.0))), 1)
+
+        if ratio >= 0.4:
+            rationale = f"Strong quantified results: {len(bullets_with_metrics)} of {len(bullets)} bullets feature concrete engineering metrics."
+            issues = []
+        elif len(bullets_with_metrics) > 0:
+            rationale = f"Functional deliverables demonstrated with initial metrics ({len(bullets_with_metrics)} of {len(bullets)} bullets). Add scale/latency metrics to elevate to 75+."
+            issues = ["Expand metrics to at least 40% of project bullet points."]
+        else:
+            rationale = "Solid architectural deliverables demonstrated. Bullet points currently focus on implementation description rather than quantified outcomes."
+            issues = ["Add measurable engineering metrics (e.g. latency, throughput, compression, speedup)."]
+
         return score, rationale, issues
 
 
@@ -464,7 +481,7 @@ Return JSON only.
 
         skills = resume.skills or []
         skills_count = len(skills)
-        skills_score = min(95.0, max(45.0, 40.0 + skills_count * 4.0))
+        skills_score = min(78.0, max(45.0, 40.0 + skills_count * 3.2))
         skills_sec = ResumeSectionScore(
             score=skills_score,
             rationale=f"Identified {skills_count} technical skills across candidate resume.",
@@ -473,7 +490,7 @@ Return JSON only.
         )
 
         exp_count = count_entries(resume.experience)
-        exp_score = min(95.0, max(45.0, 50.0 + exp_count * 15.0))
+        exp_score = min(80.0, max(40.0, 45.0 + exp_count * 12.0))
         exp_sec = ResumeSectionScore(
             score=exp_score,
             rationale=f"Identified {exp_count} professional experience role(s).",
@@ -482,7 +499,7 @@ Return JSON only.
         )
 
         proj_count = count_entries(resume.projects)
-        proj_score = min(95.0, max(40.0, 45.0 + proj_count * 14.0))
+        proj_score = min(78.0, max(40.0, 45.0 + proj_count * 9.0))
         proj_sec = ResumeSectionScore(
             score=proj_score,
             rationale=f"Identified {proj_count} project entries.",
@@ -491,7 +508,7 @@ Return JSON only.
         )
 
         edu_count = count_entries(resume.education)
-        edu_score = 85.0 if edu_count >= 1 else 50.0
+        edu_score = 75.0 if edu_count >= 1 else 50.0
         edu_sec = ResumeSectionScore(
             score=edu_score,
             rationale="Academic background documented." if edu_count else "Educational background not explicitly listed.",

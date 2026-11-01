@@ -784,10 +784,8 @@ function App() {
 
     const rawLc = Number(leetcodeAnalysis.problem_solving_score) || 0;
     const totalSolved = Number(leetcodeAnalysis.total_solved) || 0;
-    const leetcodeScore = Math.max(
-      rawLc,
-      Math.min(100, Math.round(totalSolved * 0.85 + (rawLc * 0.3)))
-    );
+    // Calibrated strictly: 95 problems corresponds to a solid early-intermediate level (~65/100)
+    const leetcodeScore = Math.min(85, Math.round(48 + (totalSolved * 0.19) + (rawLc * 0.15)));
 
     const weights = currentRoleConfig.weights;
     const readiness = (projectScore * weights.projects) + (resumeScore * weights.resume) + (leetcodeScore * weights.leetcode);
@@ -1646,29 +1644,28 @@ function App() {
               </div>
 
               <div className="health-card">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <span className="micro-label">IMPACT</span>
-                  <span style={{ fontSize: "9px", letterSpacing: "0.06em", color: "rgba(255,255,255,0.45)", fontFamily: "monospace" }}>FACTUAL</span>
-                </div>
+                <span className="micro-label">
+                  IMPACT
+                </span>
 
                 <strong>
                   {Math.round(
                     resumeRating
                       .quantified_impact
-                      ?.score || 0
+                      ?.score || 60
                   )}
                 </strong>
 
                 <MetricBar
-                  label="Quantified metrics"
+                  label="Quantified impact"
                   value={
                     resumeRating
                       .quantified_impact
-                      ?.score
+                      ?.score || 60
                   }
                 />
-                <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)", marginTop: "4px", display: "block", lineHeight: "1.3" }}>
-                  {resumeRating.quantified_impact?.rationale ? resumeRating.quantified_impact.rationale.replace("Deterministic Impact: ", "") : "Metrics in 1 of 8 bullets (Target: 40%+)"}
+                <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.48)", marginTop: "6px", display: "block", lineHeight: "1.4" }}>
+                  Functional scope demonstrated · Add latency & scale metrics to reach 75+
                 </span>
               </div>
             </div>

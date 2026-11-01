@@ -785,12 +785,24 @@ class UnifiedService:
     ) -> list[CrossSourceFinding]:
         findings = []
 
-        # 1. Actionable skill verification gaps (Suppress abstract AI / DSA noise)
+        # 1. Actionable skill verification gaps (Suppress abstract AI / DSA / foundational web noise)
+        suppress_skills = {
+            "artificial intelligence",
+            "artificial intelligence (ai)",
+            "ai",
+            "dsa",
+            "data structures",
+            "algorithms",
+            "c",
+            "c++",
+            "css",
+            "html",
+        }
         for skill in skill_evidence:
             if skill.status == "claimed_only" and skill.missing_supporting_sources:
                 norm_lower = skill.skill.lower()
                 # Skip abstract umbrella categories where child implementations suffice
-                if norm_lower in {"artificial intelligence", "dsa", "c"}:
+                if norm_lower in suppress_skills:
                     continue
 
                 findings.append(
