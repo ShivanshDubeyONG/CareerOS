@@ -1,5 +1,6 @@
+import json
 import os
-
+from pathlib import Path
 import requests
 from app.utils.env_loader import load_project_env
 
@@ -18,14 +19,8 @@ class ApifyLinkedInClient:
     Provider:
         apimaestro/linkedin-profile-full-sections-scraper
 
-    This layer ONLY acquires raw LinkedIn data.
-
-    It does not:
-        - normalize data
-        - create LinkedInProfile
-        - score the profile
-        - call Gemini
-        - perform cross-source reasoning
+    Includes disk caching and validation to prevent timeouts
+    and redundant API consumption.
     """
 
     BASE_URL = (
@@ -41,6 +36,14 @@ class ApifyLinkedInClient:
         self.api_token = (
             api_token
             or os.getenv("APIFY_API_TOKEN")
+        )
+        self.cache_dir = (
+            Path(__file__).resolve().parents[3]
+            / ".apify_cache"
+        )
+        self.cache_dir.mkdir(
+            parents=True,
+            exist_ok=True,
         )
 
     @staticmethod
@@ -91,11 +94,6 @@ class ApifyLinkedInClient:
         linkedin_url: str,
     ) -> dict:
 
-        if not self.api_token:
-            raise ApifyLinkedInAcquisitionError(
-                "APIFY_API_TOKEN is not configured."
-            )
-
         profile_url = (
             self.validate_profile_url(
                 linkedin_url
@@ -107,6 +105,25 @@ class ApifyLinkedInClient:
                 profile_url
             )
         )
+
+        # --------------------------------------------------
+        # Check disk cache first
+        # --------------------------------------------------
+        cache_file = self.cache_dir / f"{username.lower()}.json"
+        if cache_file.exists():
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict) and data.get("basic_info"):
+                        print(f"LI fetch: Disk cache HIT for {username}", flush=True)
+                        return data
+            except Exception as e:
+                print(f"LI fetch: Cache read error ({e}), proceeding with network call", flush=True)
+
+        if not self.api_token:
+            raise ApifyLinkedInAcquisitionError(
+                "APIFY_API_TOKEN is not configured."
+            )
 
         payload = {
             "usernames": [
@@ -129,7 +146,7 @@ class ApifyLinkedInClient:
                     ),
                 },
                 json=payload,
-                timeout=300,
+                timeout=45,
             )
 
         except requests.RequestException as exc:
@@ -177,6 +194,13 @@ class ApifyLinkedInClient:
                 "Apify returned an invalid "
                 "profile object."
             )
+
+        # Save to disk cache for future fast lookups
+        try:
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump(profile, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
 
         return profile
 

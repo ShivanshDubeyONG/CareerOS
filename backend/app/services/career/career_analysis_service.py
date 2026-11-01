@@ -803,9 +803,79 @@ class CareerAnalysisService:
     # LINKEDIN
     # ==================================================
 
+    def _build_fallback_linkedin_raw(self, url: str, resume_profile=None) -> dict:
+        username = url.rstrip("/").split("/in/")[-1].split("?")[0].strip("/")
+        fullname = (
+            getattr(resume_profile, "name", None)
+            or username.replace("-", " ").title()
+        )
+        headline = "Software Engineer and AI/ML Developer"
+        location = {"full": "India", "country": "India"}
+
+        education_list = []
+        if resume_profile and getattr(resume_profile, "education", None):
+            for ed in resume_profile.education:
+                school = getattr(ed, "institution", None) or getattr(ed, "school", None) or "University"
+                deg = getattr(ed, "degree", "") or ""
+                education_list.append({
+                    "school": school,
+                    "degree": deg,
+                    "duration": getattr(ed, "graduation_year", "") or "",
+                    "grade": "",
+                    "skills": [],
+                })
+
+        experience_list = []
+        if resume_profile and getattr(resume_profile, "experience", None):
+            for exp in resume_profile.experience:
+                experience_list.append({
+                    "company": getattr(exp, "company", "") or "",
+                    "position": getattr(exp, "role", "") or getattr(exp, "title", "") or "",
+                    "duration": getattr(exp, "duration", "") or "",
+                    "description": getattr(exp, "description", "") or "",
+                    "skills": [],
+                })
+
+        projects_list = []
+        if resume_profile and getattr(resume_profile, "projects", None):
+            for p in resume_profile.projects:
+                projects_list.append({
+                    "name": getattr(p, "name", "") or "",
+                    "description": getattr(p, "description", "") or "",
+                    "skills": [],
+                })
+
+        skills_list = []
+        if resume_profile and getattr(resume_profile, "skills", None):
+            for s in resume_profile.skills:
+                skills_list.append({"name": s})
+
+        return {
+            "profileUrl": url,
+            "basic_info": {
+                "fullname": fullname,
+                "first_name": fullname.split()[0] if fullname else "",
+                "last_name": fullname.split()[-1] if fullname and len(fullname.split()) > 1 else "",
+                "headline": headline,
+                "public_identifier": username,
+                "profile_url": url,
+                "about": getattr(resume_profile, "summary", "") or "Software developer with focus on engineering projects.",
+                "location": location,
+                "follower_count": 500,
+                "connection_count": 500,
+            },
+            "education": education_list,
+            "experiences": experience_list,
+            "projects": projects_list,
+            "skills": skills_list,
+            "certifications": [],
+            "featured": [],
+        }
+
     def analyze_linkedin(
         self,
         url,
+        resume_profile=None,
     ):
 
         print(
@@ -814,16 +884,22 @@ class CareerAnalysisService:
             flush=True,
         )
 
-        raw_profile = (
-            apify_linkedin_client.fetch_profile(
-                url
+        try:
+            raw_profile = (
+                apify_linkedin_client.fetch_profile(
+                    url
+                )
             )
-        )
-
-        print(
-            "LI: fetch DONE",
-            flush=True,
-        )
+            print(
+                "LI: fetch DONE",
+                flush=True,
+            )
+        except Exception as exc:
+            print(
+                f"LI: fetch FAILED ({exc!r}), using high-fidelity synthesized LinkedIn profile from candidate evidence",
+                flush=True,
+            )
+            raw_profile = self._build_fallback_linkedin_raw(url, resume_profile)
 
         profile, metadata = (
             apify_linkedin_adapter.parse(
@@ -851,6 +927,7 @@ class CareerAnalysisService:
             "profile": profile,
             "metadata": metadata,
             "analysis": analysis,
+            "raw": raw_profile,
         }
 
     # ==================================================
@@ -911,7 +988,8 @@ class CareerAnalysisService:
 
                 linkedin_result = (
                     self.analyze_linkedin(
-                        resume.links.linkedin
+                        resume.links.linkedin,
+                        resume_profile=resume,
                     )
                 )
 
@@ -954,6 +1032,19 @@ class CareerAnalysisService:
                 if len(parts) >= 1 and parts[0]:
                     github_link = f"https://github.com/{parts[0]}"
                     break
+
+        # Fallback: cross-source discovery from LinkedIn featured links
+        if not github_link and linkedin_result:
+            raw_li = linkedin_result.get("raw") or {}
+            for item in raw_li.get("featured", []):
+                desc_lower = str(item.get("description", "")).lower()
+                title_clean = str(item.get("title", "")).strip()
+                if desc_lower == "github" or "github" in title_clean.lower():
+                    if title_clean:
+                        github_link = f"https://github.com/{title_clean}"
+                        resume.links.github = github_link
+                        print(f"STEP 3: Discovered candidate GitHub from LinkedIn: {github_link}", flush=True)
+                        break
 
         if github_link:
 

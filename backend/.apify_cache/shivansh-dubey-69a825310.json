@@ -1,0 +1,302 @@
+{
+  "profileUrl": "https://linkedin.com/in/shivansh-dubey-69a825310",
+  "basic_info": {
+    "fullname": "Shivansh Dubey",
+    "first_name": "Shivansh",
+    "last_name": "Dubey",
+    "headline": "AI-ML | Python | C++ | FastAPI | Flask | GitHub \n3rd Year Undergrad at MIT Bengaluru",
+    "public_identifier": "shivansh-dubey-69a825310",
+    "profile_url": "https://linkedin.com/in/shivansh-dubey-69a825310",
+    "profile_picture_url": "https://media.licdn.com/dms/image/v2/D4D03AQHPocK5JccH7A/profile-displayphoto-crop_800_800/B4DaBG0jgAHcAI-/0/1787894580341?e=1795046400&v=beta&t=t3xk_la9GC6I6EvW2FTsirbfxSn6RDEr7iUbUYiTGbE",
+    "about": "I\u2019m a 3rd Year student at Manipal Institute of Technology, interested in building practical software and machine learning systems. I\u2019ve been working with Python, C++, SQL, and tools like Scikit-learn, TensorFlow, XGBoost, FastAPI, Flask, Docker, and Git.\n \nI enjoy working on projects end-to-end \u2014 from cleaning and preparing data, building and evaluating models, and tuning them, to turning them into usable applications and APIs. I\u2019m also actively improving my DSA and problem-solving skills, with 100+ LeetCode problems solved.\n \nCurrently looking for opportunities where I can work on real engineering/ML problems, contribute to a team, and keep getting better at building things that actually work.",
+    "location": {
+      "country": "India",
+      "city": "Bengaluru, Karnataka",
+      "full": "Bengaluru, Karnataka, India",
+      "postal_code": "",
+      "country_code": "IN"
+    },
+    "creator_hashtags": [],
+    "is_creator": false,
+    "is_influencer": false,
+    "is_premium": false,
+    "open_to_work": false,
+    "created_timestamp": 1716916691771,
+    "show_follower_count": false,
+    "background_picture_url": "https://media.licdn.com/dms/image/v2/D5616AQHDeVBqZEOG-g/profile-displaybackgroundimage-shrink_350_1400/B56Z_gxRiEGUAU-/0/1786182441371?e=1795046400&v=beta&t=gIKhZJaUxktvdPeKLzAhE3f5SfFG9Gmn4Nbd7jb8MJA",
+    "memorialized": false,
+    "is_top_voice": false,
+    "primary_locale": "en_US",
+    "urn": "ACoAAE8k55YB7ln6290W5ST6F4USjM9Qf2gDciw",
+    "follower_count": 1081,
+    "connection_count": 1082,
+    "top_education_school": {
+      "name": "Manipal Institute of Technology",
+      "urn": "21103",
+      "url": "https://www.linkedin.com/school/manipal-institute-of-technology",
+      "logo_url": "https://media.licdn.com/dms/image/v2/D4D0BAQHodG_7cUqs6w/company-logo_400_400/B4DZ8hC8AUJQAU-/0/1782965846315/manipal_institute_of_technology_logo?e=1795046400&v=beta&t=wFb4gImfxcjffxQ9MblFjvpVhPWKFk_mSus2ChtK5nE"
+    },
+    "is_verified": true,
+    "current_company": "",
+    "current_company_urn": "",
+    "top_skills": [],
+    "email": null
+  },
+  "education": [
+    {
+      "school": "Manipal Institute of Technology",
+      "degree": "Bachelor of Technology - BTech, Information Technology",
+      "degree_name": "Bachelor of Technology - BTech",
+      "field_of_study": "Information Technology",
+      "duration": "Aug 2024 \u2013 Present",
+      "school_linkedin_url": "https://www.linkedin.com/school/577550/",
+      "school_id": "577550",
+      "description": "",
+      "activities": "",
+      "grade": "CGPA - 7.5",
+      "skills": [],
+      "school_logo_url": "https://media.licdn.com/dms/image/v2/D4D0BAQHodG_7cUqs6w/company-logo_400_400/B4DZ8hC8AUJQAU-/0/1782965846315/manipal_institute_of_technology_logo?e=1795046400&v=beta&t=wFb4gImfxcjffxQ9MblFjvpVhPWKFk_mSus2ChtK5nE",
+      "start_date": {
+        "year": 2024,
+        "month": "Aug"
+      },
+      "end_date": {}
+    },
+    {
+      "school": "St. Joseph's College, Allahabad",
+      "degree": "Computer Science",
+      "degree_name": "Computer Science",
+      "field_of_study": "",
+      "duration": "Apr 2022 \u2013 May 2023",
+      "school_linkedin_url": "https://www.linkedin.com/school/14771759/",
+      "school_id": "14771759",
+      "description": "",
+      "activities": "",
+      "grade": "Class 10th - 97%  |  Class 12th - 86%",
+      "skills": [],
+      "school_logo_url": "https://media.licdn.com/dms/image/v2/C510BAQHU3Ta8Jy9QEg/company-logo_400_400/company-logo_400_400/0/1630622792721?e=1795046400&v=beta&t=aQYdC60hYIxcEh_i_n-NyF9fy9n-uA3P1gQeSxWunwQ",
+      "start_date": {
+        "year": 2022,
+        "month": "Apr"
+      },
+      "end_date": {
+        "year": 2023,
+        "month": "May"
+      }
+    }
+  ],
+  "projects": [
+    {
+      "name": "Indexora",
+      "start_date": {
+        "year": 2026,
+        "month": "Oct"
+      },
+      "end_date": {
+        "year": 2026,
+        "month": "Nov"
+      },
+      "is_current": false,
+      "description": "Algorithmic Vector Search & Retrieval Benchmarking Platform\nBuilt a vector search engine from scratch in Python/NumPy: exact search, IVF-Flat, PQ/IVF-PQ and HNSW, verified against a float64\noracle with 380+ tests.\nOn SIFT-100K, IVF-Flat hit 0.979 Recall@10 with ~9x fewer distance computations; IVF-PQ shrank the index 19.8x; HNSW reached\n0.973 recall checking ~5% of vectors.\nCut IVF build time from 1,095s to 23s by profiling k-means and moving distance assignment to BLAS, keeping the reference kernel as the\ncorrectness oracle.\nAdded filters, inserts/deletes and checksum-verified persistence; shipped a FastAPI + React lab (Docker, Render) with live recall/latency\ncomparison and semantic search.",
+      "associated_with": "",
+      "company_urn": "",
+      "skills": [],
+      "contributors": [],
+      "project_urls": [],
+      "media_items": []
+    },
+    {
+      "name": "GridPulse",
+      "start_date": {
+        "year": 2026,
+        "month": "Sep"
+      },
+      "end_date": {
+        "year": 2026,
+        "month": "Oct"
+      },
+      "is_current": false,
+      "description": "AI-Powered Digital Twin for Transformer Health Monitoring\nSep 2026 - Oct 2026\nBuilt a React dashboard for transformer telemetry, health monitoring, anomaly tracking, and maintenance recommendations.\nDeveloped a stateful digital twin that synchronizes telemetry and historical data into a canonical transformer state.\nImplemented thermal and electrical feature extraction, anomaly detection, and an Operational Transformer Health Index (OTHI).\nIntegrated predictive monitoring workflows to translate transformer operating conditions into actionable health indicators and maintenance\ninsights.",
+      "associated_with": "",
+      "company_urn": "",
+      "skills": [],
+      "contributors": [],
+      "project_urls": [],
+      "media_items": []
+    },
+    {
+      "name": "CareerOS",
+      "start_date": {
+        "year": 2026,
+        "month": "Aug"
+      },
+      "end_date": {
+        "year": 2026,
+        "month": "Sep"
+      },
+      "is_current": false,
+      "description": "Drop in your resume. CareerOS takes it from there\u2014following the links, connecting the evidence, and piecing together the bigger picture across your LinkedIn, GitHub, and LeetCode.",
+      "associated_with": "",
+      "company_urn": "",
+      "skills": [],
+      "contributors": [],
+      "project_urls": [],
+      "media_items": []
+    },
+    {
+      "name": "StayGrid",
+      "start_date": {
+        "year": 2026,
+        "month": "Jul"
+      },
+      "end_date": {
+        "year": 2026,
+        "month": "Aug"
+      },
+      "is_current": false,
+      "description": "StayGrid is a modern full-stack hotel booking platform built with Django and PostgreSQL, designed to make finding and booking the right stay simple. Discover and compare hotels, explore rooms, book with ease, share reviews, and use Stay Scores to make smarter decisions.",
+      "associated_with": "",
+      "company_urn": "",
+      "skills": [],
+      "contributors": [],
+      "project_urls": [],
+      "media_items": []
+    }
+  ],
+  "certifications": [
+    {
+      "name": "Certificate of Participation in Round 1 - Online Assessment (MCQ   Coding) of Adobe University Hackathon 2026",
+      "issuer": "Unstop",
+      "issued_date": "Issued Aug 2026",
+      "organization_urn": "urn:li:fsd_company:13605500",
+      "credential_id": "6d861b6c-509a-49ba-9261-5c294c1e8176",
+      "expiration_date": null,
+      "skills": [],
+      "credential_url": "https://unstop.com/certificate-preview/6d861b6c-509a-49ba-9261-5c294c1e8176?utm_campaign"
+    },
+    {
+      "name": "Supervised Machine Learning: Regression and Classification",
+      "issuer": "DeepLearning.AI",
+      "issued_date": "Issued Jan 2025",
+      "organization_urn": "urn:li:fsd_company:18246783",
+      "credential_id": "LL6LRJQCDYOH",
+      "expiration_date": "May 2025",
+      "skills": [
+        "Artificial Intelligence (AI)",
+        "Machine Learning"
+      ],
+      "credential_url": "https://www.coursera.org/account/accomplishments/records/LL6LRJQCDYOH"
+    }
+  ],
+  "featured": [
+    {
+      "type": "link",
+      "title": "ShivanshDubeyONG",
+      "description": "GitHub",
+      "url": "https://www.linkedin.com/in/shivansh-dubey-69a825310/overlay/1786181891911/single-media-viewer?type=LINK&profileId=ACoAAE8k55YB7ln6290W5ST6F4USjM9Qf2gDciw",
+      "image_url": "https://media.licdn.com/dms/image/sync/v2/D5627AQG3OTwYWHGWrQ/articleshare-shrink_800/B56Z_gu9QUHcAY-/0/1786181834255?e=1794121200&v=beta&t=qyEq2-v5oCxDJ-b38q0ayM_C-uDCGxn0m-KMydBybi8"
+    },
+    {
+      "type": "link",
+      "title": "shivanshdubeyfr",
+      "description": "LeetCode",
+      "url": "https://www.linkedin.com/in/shivansh-dubey-69a825310/overlay/1786182042133/single-media-viewer?type=LINK&profileId=ACoAAE8k55YB7ln6290W5ST6F4USjM9Qf2gDciw",
+      "image_url": "https://media.licdn.com/dms/image/sync/v2/D5627AQHujv9PDiw8cg/articleshare-shrink_800/B56Z_gvfppG0AY-/0/1786181975631?e=1794121200&v=beta&t=nipYHiKBEkJ5o4Bm31s02-DtsagkoTa16TzmWvCYmwo"
+    },
+    {
+      "type": "link",
+      "title": "dubbychefdoit",
+      "description": "codechef.com",
+      "url": "https://www.linkedin.com/in/shivansh-dubey-69a825310/overlay/1786182092947/single-media-viewer?type=LINK&profileId=ACoAAE8k55YB7ln6290W5ST6F4USjM9Qf2gDciw",
+      "image_url": "https://media.licdn.com/dms/image/sync/v2/D5627AQE7O5mF-ETiSw/articleshare-shrink_1280_800/B56Z_gv0V6IMAk-/0/1786182060554?e=1794121200&v=beta&t=gcpmqc1pWZ90tZQUB1NCfNGbvJyIDWlVlPml8oU5gsE"
+    }
+  ],
+  "skills": [
+    {
+      "name": "Python",
+      "endorsement_count": 0,
+      "related_experiences": []
+    },
+    {
+      "name": "Docker",
+      "endorsement_count": 0,
+      "related_experiences": []
+    },
+    {
+      "name": "GitHub",
+      "endorsement_count": 0,
+      "related_experiences": []
+    },
+    {
+      "name": "Git",
+      "endorsement_count": 0,
+      "related_experiences": []
+    },
+    {
+      "name": "Render",
+      "endorsement_count": 0,
+      "related_experiences": []
+    },
+    {
+      "name": "FastAPI",
+      "endorsement_count": 0,
+      "related_experiences": []
+    },
+    {
+      "name": "XGBoost",
+      "endorsement_count": 0,
+      "related_experiences": []
+    },
+    {
+      "name": "TensorFlow",
+      "endorsement_count": 0,
+      "related_experiences": []
+    },
+    {
+      "name": "Scikit-Learn",
+      "endorsement_count": 0,
+      "related_experiences": []
+    },
+    {
+      "name": "Data Structures",
+      "endorsement_count": 0,
+      "related_experiences": []
+    },
+    {
+      "name": "Deep Learning",
+      "endorsement_count": 0,
+      "related_experiences": []
+    },
+    {
+      "name": "DSA",
+      "endorsement_count": 0,
+      "related_experiences": []
+    },
+    {
+      "name": "C++",
+      "endorsement_count": 0,
+      "related_experiences": []
+    },
+    {
+      "name": "C",
+      "endorsement_count": 0,
+      "related_experiences": []
+    },
+    {
+      "name": "Java",
+      "endorsement_count": 0,
+      "related_experiences": []
+    },
+    {
+      "name": "Artificial Intelligence (AI)",
+      "endorsement_count": 0,
+      "related_experiences": []
+    },
+    {
+      "name": "Machine Learning",
+      "endorsement_count": 0,
+      "related_experiences": []
+    }
+  ],
+  "recommendations": []
+}
