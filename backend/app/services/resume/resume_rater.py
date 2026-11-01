@@ -44,9 +44,9 @@ class ResumeRater:
         bullets_with_arch = [b for b in bullets if arch_pattern.search(b)]
         arch_ratio = len(bullets_with_arch) / len(bullets)
 
-        # Balanced calibrated score:
-        # Base: 48.0 | Architecture scope: up to +14.0 | Explicit metrics: up to +20.0
-        score = round(min(88.0, max(45.0, 48.0 + (arch_ratio * 14.0) + (ratio * 20.0))), 1)
+        # Strict calibrated score:
+        # Base: 44.0 | Architecture scope: up to +10.0 | Explicit metrics: up to +16.0
+        score = round(min(78.0, max(42.0, 44.0 + (arch_ratio * 10.0) + (ratio * 16.0))), 1)
 
         if ratio >= 0.4:
             rationale = f"Strong quantified results: {len(bullets_with_metrics)} of {len(bullets)} bullets feature concrete engineering metrics."
@@ -438,16 +438,25 @@ Return JSON only.
             if det_issues:
                 result.quantified_impact.issues = det_issues
 
-            # Strictly anchor overall score to reflect deterministic impact
-            result.overall_score = round(
+            # Strictly moderate section scores to senior standards (targets ~66 - 72)
+            result.skills.score = round(min(74.0, max(42.0, result.skills.score * 0.82)), 1)
+            result.projects.score = round(min(72.0, max(42.0, result.projects.score * 0.82)), 1)
+            result.ats.score = round(min(76.0, max(42.0, result.ats.score * 0.84)), 1)
+            result.structure.score = round(min(74.0, max(42.0, result.structure.score * 0.84)), 1)
+            result.education.score = round(min(74.0, max(42.0, result.education.score * 0.85)), 1)
+            if hasattr(result, "experience") and result.experience:
+                result.experience.score = round(min(65.0, max(35.0, result.experience.score * 0.78)), 1)
+
+            # Strictly anchor overall score to reflect realistic student metrics (target ~68)
+            raw_overall = (
                 (result.skills.score * 0.20) +
                 (result.projects.score * 0.25) +
                 (det_score * 0.20) +
                 (result.ats.score * 0.15) +
                 (result.structure.score * 0.10) +
-                (result.education.score * 0.10),
-                1
+                (result.education.score * 0.10)
             )
+            result.overall_score = round(min(70.0, max(45.0, raw_overall)), 1)
 
             print(
                 "ResumeRating: JSON validation DONE",
@@ -481,7 +490,7 @@ Return JSON only.
 
         skills = resume.skills or []
         skills_count = len(skills)
-        skills_score = min(78.0, max(45.0, 40.0 + skills_count * 3.2))
+        skills_score = min(73.0, max(42.0, 40.0 + skills_count * 2.8))
         skills_sec = ResumeSectionScore(
             score=skills_score,
             rationale=f"Identified {skills_count} technical skills across candidate resume.",
@@ -490,7 +499,7 @@ Return JSON only.
         )
 
         exp_count = count_entries(resume.experience)
-        exp_score = min(80.0, max(40.0, 45.0 + exp_count * 12.0))
+        exp_score = min(65.0, max(38.0, 42.0 + exp_count * 10.0))
         exp_sec = ResumeSectionScore(
             score=exp_score,
             rationale=f"Identified {exp_count} professional experience role(s).",
@@ -499,7 +508,7 @@ Return JSON only.
         )
 
         proj_count = count_entries(resume.projects)
-        proj_score = min(78.0, max(40.0, 45.0 + proj_count * 9.0))
+        proj_score = min(71.0, max(40.0, 44.0 + proj_count * 8.0))
         proj_sec = ResumeSectionScore(
             score=proj_score,
             rationale=f"Identified {proj_count} project entries.",
@@ -508,7 +517,7 @@ Return JSON only.
         )
 
         edu_count = count_entries(resume.education)
-        edu_score = 75.0 if edu_count >= 1 else 50.0
+        edu_score = 72.0 if edu_count >= 1 else 50.0
         edu_sec = ResumeSectionScore(
             score=edu_score,
             rationale="Academic background documented." if edu_count else "Educational background not explicitly listed.",
@@ -561,15 +570,15 @@ Return JSON only.
             issues=["Tailor bullet points to emphasize role-specific requirements and production tooling."],
         )
 
-        overall = round(
+        raw_overall = (
             skills_sec.score * 0.20 +
-            exp_sec.score * 0.25 +
-            proj_sec.score * 0.20 +
+            exp_sec.score * 0.20 +
+            proj_sec.score * 0.25 +
+            quantified_impact_sec.score * 0.15 +
             edu_sec.score * 0.10 +
-            ats_sec.score * 0.15 +
-            structure_sec.score * 0.10,
-            1,
+            ats_sec.score * 0.10
         )
+        overall = round(min(70.0, max(42.0, raw_overall)), 1)
 
         completeness = round(
             min(

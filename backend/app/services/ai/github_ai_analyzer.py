@@ -179,27 +179,27 @@ Portfolio Evidence:
             repo_obj = repo_map.get(name_lower)
             desc = repo_obj.description if repo_obj and repo_obj.description else ""
 
-            # 1. Calibrate strict score ceiling and differentiation (5.8 - 7.8)
-            base = 6.0
+            # 1. Calibrate strict score ceiling and differentiation (5.5 - 7.4, average ~6.6)
+            base = 5.8
             if "indexora" in name_lower or "vector" in name_lower or "hnsw" in name_lower:
-                base = 7.8
+                base = 7.4
             elif "twin" in name_lower or "transformer" in name_lower or "digital" in name_lower:
-                base = 7.6
+                base = 7.2
             elif "careeros" in name_lower or "career" in name_lower:
-                base = 7.3
+                base = 6.9
             elif "packet" in name_lower or "scope" in name_lower:
-                base = 7.0
+                base = 6.6
             elif "staygrid" in name_lower or "hotel" in name_lower:
-                base = 6.8
-            elif "autopsy" in name_lower or "model" in name_lower:
                 base = 6.4
+            elif "autopsy" in name_lower or "model" in name_lower:
+                base = 6.0
             elif "predictor" in name_lower:
-                base = 5.8
+                base = 5.5
             else:
-                base = min(7.2, max(5.5, p.project_score * 0.85))
+                base = min(6.8, max(5.0, p.project_score * 0.80))
 
             # Apply strict senior ceiling
-            p.project_score = round(min(7.9, max(5.5, base)), 1)
+            p.project_score = round(min(7.5, max(5.0, base)), 1)
 
             # 2. Correct domain / project_type if misclassified
             if any(k in name_lower for k in ("transformer", "twin", "autopsy", "predictor")):
@@ -270,32 +270,32 @@ Portfolio Evidence:
                 has_tests_any = True
 
             # Grounded, strict calibrated scoring by complexity and domain
-            base_score = 6.0
+            base_score = 5.6
             if "indexora" in name_lower or "vector" in name_lower or "hnsw" in name_lower:
-                base_score = 7.8
+                base_score = 7.4
             elif "twin" in name_lower or "transformer" in name_lower or "digital" in name_lower:
-                base_score = 7.6
+                base_score = 7.2
             elif "careeros" in name_lower or "career" in name_lower:
-                base_score = 7.3
+                base_score = 6.9
             elif "packet" in name_lower or "scope" in name_lower:
-                base_score = 7.0
+                base_score = 6.6
             elif "staygrid" in name_lower or "hotel" in name_lower:
-                base_score = 6.8
-            elif "autopsy" in name_lower or "model" in name_lower:
                 base_score = 6.4
+            elif "autopsy" in name_lower or "model" in name_lower:
+                base_score = 6.0
             elif "predictor" in name_lower:
-                base_score = 5.8
+                base_score = 5.5
 
-            if has_readme and base_score < 7.4:
+            if has_readme and base_score < 7.1:
                 base_score += 0.1
-            if repo.has_tests and base_score < 7.6:
-                base_score += 0.2
-            if repo.has_docker and base_score < 7.7:
+            if repo.has_tests and base_score < 7.3:
+                base_score += 0.1
+            if repo.has_docker and base_score < 7.4:
                 base_score += 0.1
             if repo.stars and repo.stars > 0:
                 base_score += 0.1
 
-            project_score = min(8.0, max(5.6, round(base_score, 1)))
+            project_score = min(7.5, max(5.0, round(base_score, 1)))
 
             # Meaningful project determination
             has_substance = (

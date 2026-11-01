@@ -784,10 +784,25 @@ function App() {
 
     const rawLc = Number(leetcodeAnalysis.problem_solving_score) || 0;
     const totalSolved = Number(leetcodeAnalysis.total_solved) || 0;
-    // Calibrated strictly: 95 problems corresponds to a solid early-intermediate level (~65/100)
-    const leetcodeScore = Math.min(85, Math.round(48 + (totalSolved * 0.19) + (rawLc * 0.15)));
+    // Calibrated strictly: 95 problems corresponds to solid early-intermediate level (~62/100)
+    const leetcodeScore = Math.min(78, Math.round(44 + (totalSolved * 0.16) + (rawLc * 0.12)));
 
-    const weights = currentRoleConfig.weights;
+    const hasGithub = Boolean(githubAnalysis?.projects?.length);
+    const hasResume = Boolean(resumeRating?.overall_score);
+    const hasLeetcode = Boolean(leetcodeAnalysis?.total_solved || leetcodeAnalysis?.problem_solving_score);
+
+    // Dynamic normalized weights based on available connected sources
+    const rawWProjects = hasGithub ? currentRoleConfig.weights.projects : 0;
+    const rawWResume = hasResume ? currentRoleConfig.weights.resume : 0;
+    const rawWLeetcode = hasLeetcode ? currentRoleConfig.weights.leetcode : 0;
+    const totalW = (rawWProjects + rawWResume + rawWLeetcode) || 1;
+
+    const weights = {
+      projects: rawWProjects / totalW,
+      resume: rawWResume / totalW,
+      leetcode: rawWLeetcode / totalW,
+    };
+
     const readiness = (projectScore * weights.projects) + (resumeScore * weights.resume) + (leetcodeScore * weights.leetcode);
 
     return {
@@ -796,6 +811,9 @@ function App() {
       resumeScore: Math.round(resumeScore),
       leetcodeScore: Math.round(leetcodeScore),
       weights,
+      hasGithub,
+      hasResume,
+      hasLeetcode,
     };
   }, [
     resumeRating,
@@ -1448,7 +1466,12 @@ function App() {
                 color: "rgba(255,255,255,0.85)",
                 lineHeight: "1.6"
               }}>
-                <strong style={{ color: "#10b981" }}>Readiness Formula:</strong> (Projects: {readinessBreakdown.projectScore} × {Math.round(readinessBreakdown.weights.projects * 100)}%) + (Resume: {readinessBreakdown.resumeScore} × {Math.round(readinessBreakdown.weights.resume * 100)}%) + (LeetCode: {readinessBreakdown.leetcodeScore} × {Math.round(readinessBreakdown.weights.leetcode * 100)}%) = <strong style={{ color: "#fff", fontSize: "13px" }}>{readinessBreakdown.readiness} / 100</strong>
+                <strong style={{ color: "#10b981" }}>Readiness Formula:</strong>{" "}
+                {[
+                  readinessBreakdown.weights.projects > 0 && `(Projects: ${readinessBreakdown.projectScore} × ${Math.round(readinessBreakdown.weights.projects * 100)}%)`,
+                  readinessBreakdown.weights.resume > 0 && `(Resume: ${readinessBreakdown.resumeScore} × ${Math.round(readinessBreakdown.weights.resume * 100)}%)`,
+                  readinessBreakdown.weights.leetcode > 0 && `(LeetCode: ${readinessBreakdown.leetcodeScore} × ${Math.round(readinessBreakdown.weights.leetcode * 100)}%)`,
+                ].filter(Boolean).join(" + ") || "Analyzing connected sources..."} = <strong style={{ color: "#fff", fontSize: "13px" }}>{readinessBreakdown.readiness} / 100</strong>
               </div>
 
               <p style={{ margin: 0, fontSize: "12px", color: "rgba(255,255,255,0.5)" }}>
